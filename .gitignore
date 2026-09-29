@@ -15,3 +15,5 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+# Speech-to-text recordings
+ai-services/speech-to-text/recordings/

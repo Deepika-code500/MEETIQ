@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Meeting Summary - MeetIQ</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #6b7280;
+        }
+
+        .section {
+            background: white;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        }
+
+        .section h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        .section ul {
+            padding-left: 22px;
+        }
+
+        .section li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .empty {
+            color: #777;
+            font-style: italic;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 25px;
+            padding: 10px 16px;
+            background: #111827;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <a
+        href="{{ url_for('participant_meeting', meeting_id=meeting._id) }}"
+        class="back-button"
+    >
+        ← Back to Meeting
+    </a>
+
+    <div class="header">
+
+        <h1>
+            {{ meeting.get("title", "Meeting Summary") }}
+        </h1>
+
+        <p>
+            AI-generated meeting summary
+        </p>
+
+    </div>
+
+
+    <!-- DISCUSSION POINTS -->
+
+    <div class="section">
+
+        <h2>💬 Discussion Points</h2>
+
+        {% if ai_summary.get("discussion_points") %}
+
+            <ul>
+
+                {% for point in ai_summary.get("discussion_points", []) %}
+
+                    <li>{{ point }}</li>
+
+                {% endfor %}
+
+            </ul>
+
+        {% else %}
+
+            <p class="empty">
+                No discussion points available yet.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- DECISIONS -->
+
+    <div class="section">
+
+        <h2>✅ Decisions</h2>
+
+        {% if ai_summary.get("decisions") %}
+
+            <ul>
+
+                {% for decision in ai_summary.get("decisions", []) %}
+
+                    <li>{{ decision }}</li>
+
+                {% endfor %}
+
+            </ul>
+
+        {% else %}
+
+            <p class="empty">
+                No decisions recorded.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- ACTION ITEMS -->
+
+    <div class="section">
+
+        <h2>📌 Action Items</h2>
+
+        {% if ai_summary.get("action_items") %}
+
+            <ul>
+
+                {% for item in ai_summary.get("action_items", []) %}
+                    <li>{{ item }}</li>
+
+                {% endfor %}
+
+            </ul>
+
+        {% else %}
+
+            <p class="empty">
+                No action items recorded.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

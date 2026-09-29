@@ -1,241 +1,390 @@
 <style>
+    /* ================================
+       ADMIN SIDEBAR
+       ================================ */
 
-    .sidebar {
-        width: 255px !important;
-        background: rgba(13, 17, 32, 0.96) !important;
-        border-right: 1px solid rgba(255,255,255,0.08) !important;
-        padding: 25px 18px !important;
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        bottom: 0 !important;
-        height: 100vh !important;
-        z-index: 100 !important;
-        font-size: 15px !important;
+    .admin-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 292px;
+        height: 100vh;
+        background: #0b0f20;
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        padding: 14px 16px 18px;
+        box-sizing: border-box;
+        transition: transform 0.3s ease;
     }
 
-    .brand {
-        display: flex !important;
-        align-items: center !important;
-        gap: 12px !important;
-        padding: 0 10px 30px !important;
+    /* ================================
+       LOGO
+       ================================ */
+
+    .admin-sidebar-logo {
+        height: 76px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        margin-bottom: 20px;
     }
 
-    .brand-icon {
-        width: 42px !important;
-        height: 42px !important;
-        border-radius: 12px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        background: linear-gradient(135deg, #6c63ff, #00c6ff) !important;
-        box-shadow: 0 8px 30px rgba(108, 99, 255, 0.35) !important;
+    .admin-logo-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+            135deg,
+            #6658ff,
+            #19b8ff
+        );
+        color: white;
+        font-size: 22px;
+        font-weight: 700;
+        margin-right: 13px;
+        box-shadow: 0 8px 22px rgba(77, 105, 255, 0.20);
     }
 
-    .brand-text h2 {
-        font-size: 23px !important;
-        font-weight: 800 !important;
-        letter-spacing: -0.5px !important;
+    .admin-logo-text {
+        font-size: 27px;
+        font-weight: 800;
+        color: #f5f7ff;
+        letter-spacing: -0.8px;
     }
 
-    .brand-text span {
-        display: block !important;
-        margin-top: 2px !important;
-        font-size: 9px !important;
-        color: #78839f !important;
-        letter-spacing: 1.5px !important;
-        text-transform: uppercase !important;
+    .admin-logo-text span {
+        color: #5c8cff;
     }
 
-    .nav-section {
-        margin-top: 15px !important;
+    /* ================================
+       CLOSE BUTTON
+       ================================ */
+
+    .admin-sidebar-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 38px;
+        height: 38px;
+        border: none;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.055);
+        color: #9ca7bf;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: 0.2s ease;
     }
 
-    .nav-label {
-        color: #71798f !important;
-        font-size: 11px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1.4px !important;
-        padding: 0 12px !important;
-        margin-bottom: 10px !important;
+    .admin-sidebar-close:hover {
+        background: rgba(255, 255, 255, 0.10);
+        color: white;
     }
 
-    .nav-item {
-        display: flex !important;
-        align-items: center !important;
-        gap: 13px !important;
-        padding: 13px 13px !important;
-        border-radius: 11px !important;
-        margin-bottom: 5px !important;
-        color: #9da5ba !important;
-        cursor: pointer !important;
-        transition: 0.25s !important;
-        font-size: 15px !important;
-        text-decoration: none !important;
+    /* ================================
+       SECTION TITLE
+       ================================ */
+
+    .admin-sidebar-section-title {
+        padding: 0 13px;
+        margin: 8px 0 12px;
+        color: #6f7892;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
     }
 
-    .nav-item:hover {
-        color: #ffffff !important;
-        background: rgba(108, 99, 255, 0.14) !important;
+    /* ================================
+       NAVIGATION
+       ================================ */
+
+    .admin-sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
     }
 
-    .nav-item.active {
-        color: #ffffff !important;
-        background: rgba(108, 99, 255, 0.14) !important;
-        border-left: 3px solid #7c74ff !important;
+    .admin-sidebar-nav a {
+        height: 52px;
+        padding: 0 16px;
+        border-radius: 13px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: #9ca7bf;
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
     }
 
-    .nav-icon {
-        width: 22px !important;
-        min-width: 22px !important;
-        text-align: center !important;
-        font-size: 17px !important;
+    .admin-sidebar-nav a:hover {
+        background: rgba(255, 255, 255, 0.045);
+        color: #f2f4ff;
     }
 
-    .sidebar-bottom {
-        position: absolute !important;
-        bottom: 22px !important;
-        left: 18px !important;
-        right: 18px !important;
-        padding-top: 15px !important;
-        border-top: 1px solid rgba(255,255,255,0.06) !important;
+    .admin-sidebar-nav a.active {
+        background: rgba(87, 76, 190, 0.25);
+        color: #f5f5ff;
+        border-left: 3px solid #796cff;
+        padding-left: 13px;
     }
 
-    .logout:hover {
-        color: #ff7b8b !important;
-        background: rgba(255, 80, 100, 0.07) !important;
+    .admin-sidebar-icon {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 18px;
+        color: #9ca7bf;
     }
 
+    .admin-sidebar-nav a.active .admin-sidebar-icon {
+        color: #9a91ff;
+    }
+
+    /* ================================
+       BOTTOM LOGOUT
+       ================================ */
+
+    .admin-sidebar-bottom {
+        margin-top: auto;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .admin-sidebar-bottom a {
+        height: 52px;
+        padding: 0 16px;
+        border-radius: 13px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: #9ca7bf;
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: 500;
+        transition: 0.2s ease;
+    }
+
+    .admin-sidebar-bottom a:hover {
+        background: rgba(255, 255, 255, 0.045);
+        color: #f2f4ff;
+    }
+
+    /* ================================
+       OPEN BUTTON
+       ================================ */
+
+    .admin-sidebar-open {
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        width: 42px;
+        height: 42px;
+        border: none;
+        border-radius: 11px;
+        background: #171c35;
+        color: #cbd2e6;
+        font-size: 22px;
+        cursor: pointer;
+        z-index: 1100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    }
+
+    .admin-sidebar-open:hover {
+        background: #22294a;
+        color: white;
+    }
+
+    /* ================================
+       SIDEBAR CLOSED
+       ================================ */
+
+    body.admin-sidebar-closed .admin-sidebar {
+        transform: translateX(-100%);
+    }
+
+    body.admin-sidebar-closed .admin-sidebar-open {
+        display: flex;
+    }
+
+    /* ================================
+       ADMIN MAIN CONTENT
+       ================================ */
+
+    /* Sidebar OPEN */
+    body:not(.admin-sidebar-closed) .admin-main-content {
+        margin-left: 292px !important;
+        width: calc(100% - 292px) !important;
+        box-sizing: border-box;
+    }
+
+    body:not(.admin-sidebar-closed) .main-content {
+        margin-left: 292px !important;
+        width: calc(100% - 292px) !important;
+        box-sizing: border-box;
+    }
+
+    body:not(.admin-sidebar-closed) .admin-content {
+        margin-left: 292px !important;
+        width: calc(100% - 292px) !important;
+        box-sizing: border-box;
+    }
+
+    body:not(.admin-sidebar-closed) .main {
+        margin-left: 292px !important;
+        width: calc(100% - 292px) !important;
+        box-sizing: border-box;
+    }
+
+
+    /* Sidebar CLOSED */
+    body.admin-sidebar-closed .admin-main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    body.admin-sidebar-closed .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    body.admin-sidebar-closed .admin-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    body.admin-sidebar-closed .main {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
 </style>
-<!-- =====================================================
-     SHARED ADMIN SIDEBAR
-===================================================== -->
 
-<aside class="sidebar">
 
-    <div class="brand">
+<!-- ================================
+     ADMIN SIDEBAR
+     ================================ -->
 
-        <div class="brand-icon">
-            ◈
+<aside class="admin-sidebar" id="adminSidebar">
+
+    <!-- LOGO -->
+    <div class="admin-sidebar-logo">
+
+        <div class="admin-logo-icon">
+            ◇
         </div>
 
-        <div class="brand-text">
-
-            <h2>MeetIQ</h2>
-
-            <span>Intelligent Meetings</span>
-
+        <div class="admin-logo-text">
+            Meet<span>IQ</span>
         </div>
 
     </div>
 
 
-    <div class="nav-section">
+    <!-- CLOSE BUTTON -->
+    <button
+        type="button"
+        class="admin-sidebar-close"
+        onclick="closeAdminSidebar()"
+        aria-label="Close sidebar"
+    >
+        ×
+    </button>
 
-        <div class="nav-label">
-            Workspace
-        </div>
 
+    <!-- WORKSPACE -->
+    <div class="admin-sidebar-section-title">
+        Workspace
+    </div>
+
+
+    <nav class="admin-sidebar-nav">
 
         <!-- DASHBOARD -->
-
         <a
             href="{{ url_for('admin_dashboard') }}"
-            class="nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}"
+            class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}"
         >
-
-            <span class="nav-icon">⌂</span>
-
+            <span class="admin-sidebar-icon">⌂</span>
             <span>Dashboard</span>
-
         </a>
 
 
         <!-- MEETINGS -->
-
         <a
             href="{{ url_for('admin_meetings') }}"
-            class="nav-item {% if request.endpoint == 'admin_meetings' or request.endpoint == 'create_meeting' %}active{% endif %}"
+            class="{% if request.endpoint in ['admin_meetings', 'create_meeting', 'meeting_details', 'edit_meeting'] %}active{% endif %}"
         >
-
-            <span class="nav-icon">◫</span>
-
+            <span class="admin-sidebar-icon">▣</span>
             <span>Meetings</span>
-
         </a>
 
 
         <!-- PARTICIPANTS -->
-
         <a
             href="{{ url_for('admin_participants') }}"
-            class="nav-item {% if request.endpoint == 'admin_participants' %}active{% endif %}"
+            class="{% if request.endpoint == 'admin_participants' %}active{% endif %}"
         >
-
-            <span class="nav-icon">♙</span>
-
+            <span class="admin-sidebar-icon">♙</span>
             <span>Participants</span>
-
         </a>
 
 
         <!-- ANALYTICS -->
-
         <a
             href="#"
-            class="nav-item"
-            onclick="showComingSoon('Analytics'); return false;"
+            onclick="return false;"
         >
-
-            <span class="nav-icon">◒</span>
-
+            <span class="admin-sidebar-icon">◉</span>
             <span>Analytics</span>
-
         </a>
 
 
         <!-- AI INSIGHTS -->
-
         <a
             href="#"
-            class="nav-item"
-            onclick="showComingSoon('AI Insights'); return false;"
+            onclick="return false;"
         >
-
-            <span class="nav-icon">✦</span>
-
+            <span class="admin-sidebar-icon">✦</span>
             <span>AI Insights</span>
-
         </a>
 
 
         <!-- SETTINGS -->
-
         <a
             href="#"
-            class="nav-item"
-            onclick="showComingSoon('Settings'); return false;"
+            onclick="return false;"
         >
-
-            <span class="nav-icon">⚙</span>
-
+            <span class="admin-sidebar-icon">⚙</span>
             <span>Settings</span>
-
         </a>
 
-    </div>
+    </nav>
 
 
-    <!-- LOGOUT -->
+    <!-- BOTTOM -->
+    <div class="admin-sidebar-bottom">
 
-    <div class="sidebar-bottom">
+        <a href="{{ url_for('logout') }}">
 
-        <a
-            href="{{ url_for('logout') }}"
-            class="nav-item logout"
-        >
-
-            <span class="nav-icon">↪</span>
+            <span class="admin-sidebar-icon">
+                ↪
+            </span>
 
             <span>Logout</span>
 
@@ -246,14 +395,30 @@
 </aside>
 
 
+<!-- OPEN SIDEBAR BUTTON -->
+<button
+    type="button"
+    class="admin-sidebar-open"
+    onclick="openAdminSidebar()"
+    aria-label="Open sidebar"
+>
+    ☰
+</button>
+
+
 <script>
 
-function showComingSoon(module) {
+    function closeAdminSidebar() {
+        document.body.classList.add(
+            "admin-sidebar-closed"
+        );
+    }
 
-    alert(
-        module + " module will be completed next."
-    );
 
-}
+    function openAdminSidebar() {
+        document.body.classList.remove(
+            "admin-sidebar-closed"
+        );
+    }
 
 </script>

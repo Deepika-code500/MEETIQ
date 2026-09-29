@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MeetIQ | My Meetings</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Inter, Arial, sans-serif;
+            background:
+                radial-gradient(
+                    circle at 10% 10%,
+                    rgba(91, 76, 255, 0.18),
+                    transparent 30%
+                ),
+                radial-gradient(
+                    circle at 90% 20%,
+                    rgba(0, 200, 255, 0.12),
+                    transparent 30%
+                ),
+                #080b16;
+            color: #f5f7ff;
+            min-height: 100vh;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ================= SIDEBAR ================= */
+
+.sidebar {
+    width: 255px;
+
+    background: rgba(13, 17, 32, 0.96);
+
+    border-right: 1px solid rgba(255,255,255,0.08);
+
+    padding: 25px 18px;
+
+    position: fixed;
+
+    left: 0;
+    top: 0;
+    bottom: 0;
+
+    z-index: 100;
+
+    transition: transform 0.3s ease;
+}
+
+
+/* ================= SIDEBAR CLOSE BUTTON ================= */
+
+.sidebar-close {
+    position: absolute;
+
+    top: 22px;
+    right: 18px;
+
+    width: 32px;
+    height: 32px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: rgba(255,255,255,0.06);
+
+    color: #b6bfd2;
+
+    font-size: 24px;
+
+    line-height: 1;
+
+    cursor: pointer;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    z-index: 110;
+
+    transition: 0.2s;
+}
+
+.sidebar-close:hover {
+    background: rgba(108,99,255,0.20);
+    color: white;
+}
+
+
+/* ================= SIDEBAR OPEN BUTTON ================= */
+
+.sidebar-open {
+    position: fixed;
+
+    top: 22px;
+    left: 18px;
+
+    width: 40px;
+    height: 40px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: rgba(255,255,255,0.08);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    color: white;
+
+    font-size: 20px;
+
+    cursor: pointer;
+
+    display: none;
+
+    align-items: center;
+
+    justify-content: center;
+
+    z-index: 90;
+
+    transition: 0.2s;
+}
+
+.sidebar-open:hover {
+    background: rgba(108,99,255,0.20);
+}
+/* ================= SIDEBAR CLOSED ================= */
+
+body.sidebar-closed .sidebar {
+    transform: translateX(-100%);
+}
+
+body.sidebar-closed .main {
+    margin-left: 0;
+    width: 100%;
+}
+
+body.sidebar-closed .sidebar-open {
+    display: flex;
+}
+
+        /* MAIN */
+
+       .main {
+    margin-left: 255px;
+
+    width: calc(100% - 255px);
+
+    padding: 25px 32px 40px;
+
+    transition:
+        margin-left 0.3s ease,
+        width 0.3s ease;
+}
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .heading h1 {
+            font-size: 30px;
+            margin-bottom: 7px;
+        }
+
+        .heading p {
+            color: #7e879e;
+            font-size: 14px;
+        }
+
+        .back {
+            color: #8d87ff;
+            font-size: 13px;
+        }
+
+        /* MEETINGS */
+
+        .meeting-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .meeting-card {
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            padding: 22px;
+            transition: 0.2s;
+        }
+
+        .meeting-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(108,99,255,0.30);
+        }
+
+        .meeting-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 18px;
+        }
+
+        .meeting-title {
+            font-size: 19px;
+            font-weight: 750;
+            margin-bottom: 7px;
+        }
+
+        .meeting-description {
+            color: #858da2;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .status {
+            padding: 6px 11px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .status.upcoming {
+            color: #79a5ff;
+            background: rgba(80,130,255,0.12);
+        }
+
+        .status.live {
+            color: #50d7a2;
+            background: rgba(80,215,162,0.12);
+        }
+
+        .status.completed {
+            color: #b3bacb;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .meeting-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            background: rgba(255,255,255,0.035);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .info-label {
+            color: #6f7890;
+            font-size: 10px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+        }
+
+        .info-value {
+            font-size: 13px;
+            color: #dce1ee;
+        }
+
+        .join-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #6d63ff, #5a8cff);
+            color: white;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .empty {
+            background: rgba(255,255,255,0.035);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 45px;
+            margin-bottom: 15px;
+        }
+
+        .empty h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .empty p {
+            color: #7e879e;
+            font-size: 13px;
+        }
+
+        @media (max-width: 850px) {
+
+            .meeting-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+        @media (max-width: 600px) {
+
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                width: 100%;
+                padding: 20px;
+            }
+
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <button
+            type="button"
+            class="sidebar-close"
+            onclick="closeSidebar()"
+            aria-label="Close sidebar"
+        >
+            ×
+        </button>
+
+        <div class="brand">
+
+            <div class="brand-icon">
+
+                <svg
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-width="2"
+                        d="M8 7V5a4 4 0 018 0v2"
+                    />
+
+                    <rect
+                        x="4"
+                        y="7"
+                        width="16"
+                        height="13"
+                        rx="2"
+                        stroke-width="2"
+                    />
+
+                    <path
+                        stroke-width="2"
+                        d="M9 12h6M12 9v6"
+                    />
+                </svg>
+
+            </div>
+
+            <div class="brand-name">
+                Meet<span>IQ</span>
+            </div>
+
+        </div>
+
+
+        <div class="nav-section">
+
+            <div class="nav-title">
+                Workspace
+            </div>
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="nav-item"
+            >
+                Dashboard
+            </a>
+
+            <a
+                href="{{ url_for('participant_meetings') }}"
+                class="nav-item active"
+            >
+                My Meetings
+            </a>
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="nav-item"
+            >
+                Attendance
+            </a>
+
+        </div>
+
+
+        <div class="nav-section">
+
+            <div class="nav-title">
+                AI & Insights
+            </div>
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="nav-item"
+            >
+                Summaries
+            </a>
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="nav-item"
+            >
+                AI Insights
+            </a>
+
+        </div>
+
+
+        <div class="sidebar-bottom">
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="nav-item"
+            >
+                Profile
+            </a>
+
+            <a
+                href="{{ url_for('logout') }}"
+                class="nav-item"
+            >
+                Sign Out
+            </a>
+
+        </div>
+
+    </aside>
+
+    <button
+        type="button"
+        class="sidebar-open"
+        onclick="openSidebar()"
+        aria-label="Open sidebar"
+    >
+        ☰
+    </button>
+
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <div class="topbar">
+
+            <div class="heading">
+
+                <h1>
+                    My Meetings
+                </h1>
+
+                <p>
+                    Meetings you have been invited to attend.
+                </p>
+
+            </div>
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="back"
+            >
+                ← Dashboard
+            </a>
+
+        </div>
+
+
+        {% if meetings %}
+
+            <div class="meeting-grid">
+
+                {% for meeting in meetings %}
+
+                    <div class="meeting-card">
+
+                        <div class="meeting-top">
+
+                            <div>
+
+                                <div class="meeting-title">
+                                    {{ meeting.title }}
+                                </div>
+
+                                <div class="meeting-description">
+
+                                    {{ meeting.description or
+                                    "No description provided." }}
+
+                                </div>
+
+                            </div>
+
+
+                            {% if meeting.status == "live" %}
+
+                                <span class="status live">
+                                    LIVE
+                                </span>
+
+                            {% elif meeting.status == "completed" %}
+
+                                <span class="status completed">
+                                    Completed
+                                </span>
+
+                            {% else %}
+
+                                <span class="status upcoming">
+                                    Upcoming
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="meeting-info">
+
+                            <div class="info-box">
+
+                                <div class="info-label">
+                                    Date
+                                </div>
+
+                                <div class="info-value">
+                                    {{ meeting.date }}
+                                </div>
+
+                            </div>
+
+
+                            <div class="info-box">
+
+                                <div class="info-label">
+                                    Time
+                                </div>
+
+                                <div class="info-value">
+                                    {{ meeting.time }}
+                                </div>
+
+                            </div>
+
+
+                            <div class="info-box">
+
+                                <div class="info-label">
+                                    Duration
+                                </div>
+
+                                <div class="info-value">
+                                    {{ meeting.duration }} minutes
+                                </div>
+
+                            </div>
+
+
+                            <div class="info-box">
+
+                                <div class="info-label">
+                                    Type
+                                </div>
+
+                                <div class="info-value">
+                                    {{ meeting.meeting_type }}
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <a
+                            href="{{ url_for(
+                                'participant_meeting',
+                                meeting_id=meeting._id
+                            ) }}"
+                            class="join-button"
+                        >
+
+                            {% if meeting.status == "live" %}
+
+                                Join Live Meeting
+
+                            {% else %}
+
+                                View Meeting
+
+                            {% endif %}
+
+                        </a>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="empty">
+
+                <div class="empty-icon">
+                    📅
+                </div>
+
+                <h2>
+                    No Meetings Yet
+                </h2>
+
+                <p>
+                    Meetings you are invited to attend will appear here.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </main>
+
+</div>
+
+<script>
+function closeSidebar() {
+    document.body.classList.add("sidebar-closed");
+}
+
+function openSidebar() {
+    document.body.classList.remove("sidebar-closed");
+}
+</script>
+
+</body>
+
+</html>

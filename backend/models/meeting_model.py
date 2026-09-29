@@ -1,6 +1,5 @@
 from database import db
 
-
 meetings_collection = db["meetings"]
 
 
@@ -14,7 +13,8 @@ def create_meeting(
     duration,
     meeting_type,
     access,
-    created_by
+    created_by,
+    created_by_email=None
 ):
     meeting = {
         "title": title,
@@ -27,20 +27,14 @@ def create_meeting(
         "meeting_type": meeting_type,
         "access": access,
         "created_by": created_by,
-
-        # Participants invited to this meeting
+        "created_by_email": created_by_email,
         "invited_participants": [],
-
-        # Meeting status
         "status": "upcoming",
-
-        # AI-generated information will be added later
         "ai_summary": None,
         "ai_insights": []
     }
 
     result = meetings_collection.insert_one(meeting)
-
     meeting["_id"] = result.inserted_id
 
     return meeting

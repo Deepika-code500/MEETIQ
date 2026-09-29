@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="en">
+<script type="module">
+
+    import {
+        FaceLandmarker,
+        FilesetResolver
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.mjs";
+
+
+    async function initializeAttentionTracking() {
+
+        try {
+
+            const filesetResolver =
+                await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+                );
+
+
+            window.meetIQFaceLandmarker =
+                await FaceLandmarker.createFromOptions(
+                    filesetResolver,
+                    {
+                        baseOptions: {
+                            modelAssetPath:
+                                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+
+                            delegate: "CPU"
+                        },
+
+                        runningMode: "VIDEO",
+
+                        numFaces: 1
+                    }
+                );
+
+
+            console.log(
+                "MeetIQ eye + head tracking initialized."
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "Attention tracking initialization failed:",
+                error
+            );
+
+        }
+
+    }
+
+
+    window.initializeAttentionTracking =
+        initializeAttentionTracking;
+
+</script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ meeting.title }} | MeetIQ</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #0b0f17;
+            color: #ffffff;
+        }
+
+        .page {
+            padding: 30px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .back {
+            display: inline-block;
+            margin-bottom: 25px;
+            color: #9ca3af;
+            text-decoration: none;
+        }
+
+        .back:hover {
+            color: #ffffff;
+        }
+
+        .header {
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #9ca3af;
+        }
+.video-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #151a24;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.remote-video-label {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    background: rgba(0, 0, 0, 0.65);
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+        /* =========================
+           MEETING INFORMATION
+        ========================= */
+
+        .meeting-card {
+            background: #121824;
+            border: 1px solid #202938;
+            border-radius: 18px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .meeting-card h2 {
+            margin-bottom: 18px;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .detail {
+            background: #0d131e;
+            border: 1px solid #202938;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .label {
+            color: #8b95a7;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .value {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* =========================
+           MEETING ROOM
+        ========================= */
+
+        .meeting-room {
+            display: none;
+            background: #121824;
+            border: 1px solid #202938;
+            border-radius: 18px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .room-header h2 {
+            font-size: 20px;
+        }
+
+        .live-status {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: #86efac;
+            font-size: 13px;
+        }
+
+        .live-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            min-height: 450px;
+            background: #05070b;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #202938;
+        }
+
+        #localVideo {
+            width: 100%;
+            height: 450px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .camera-label {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        /* =========================
+           CONTROLS
+        ========================= */
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 1px solid #303a4d;
+            background: #1a2230;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .control-btn:hover {
+            background: #242e40;
+        }
+
+        .leave-btn {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+
+        .leave-btn:hover {
+            background: #b91c1c;
+        }
+
+        /* =========================
+           JOIN SECTION
+        ========================= */
+
+        .join-section {
+            text-align: center;
+            padding: 35px;
+            background: #121824;
+            border: 1px solid #202938;
+            border-radius: 18px;
+            margin-bottom: 25px;
+        }
+
+        .join-section h2 {
+            margin-bottom: 10px;
+        }
+
+        .join-section p {
+            color: #8b95a7;
+            margin-bottom: 25px;
+        }
+
+        .join-btn {
+            padding: 14px 30px;
+            background: #ffffff;
+            color: #000000;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+        }
+
+        .join-btn:hover {
+            opacity: 0.85;
+        }
+
+        /* =========================
+           AI FEATURES
+        ========================= */
+
+        .ai-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .ai-card {
+            background: #121824;
+            border: 1px solid #202938;
+            border-radius: 15px;
+            padding: 22px;
+        }
+
+        .ai-card h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .ai-card p {
+            color: #8b95a7;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 800px) {
+
+            .details,
+            .ai-section {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            #localVideo {
+                height: 350px;
+            }
+        }
+
+        @media (max-width: 600px) {
+
+            .page {
+                padding: 18px;
+            }
+
+            .details,
+            .ai-section {
+                grid-template-columns: 1fr;
+            }
+
+            #localVideo {
+                height: 280px;
+            }
+        }
+        .chat-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 340px;
+    height: 430px;
+    background: #171b24;
+    border: 1px solid #343d4d;
+    border-radius: 14px;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1000;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.4);
+}
+
+.chat-header {
+    height: 55px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #292f3d;
+}
+
+.chat-close {
+    border: none;
+    background: transparent;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.chat-message {
+    margin-bottom: 12px;
+}
+
+.chat-message strong {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.chat-message span {
+    display: inline-block;
+    background: #292f3d;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    word-break: break-word;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid #292f3d;
+}
+
+.chat-input-area input {
+    flex: 1;
+    border: 1px solid #343d4d;
+    background: #0f131b;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    outline: none;
+}
+
+.chat-input-area button {
+    border: none;
+    background: white;
+    color: black;
+    padding: 0 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+    </style>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+
+<body>
+
+<div class="page">
+
+    <a href="{{ url_for('participant_dashboard') }}" class="back">
+        ← Back to Dashboard
+    </a>
+
+    <div class="header">
+        <h1>{{ meeting.title }}</h1>
+
+        <p>
+            You are invited to this meeting.
+        </p>
+    </div>
+
+
+    <!-- =========================
+         MEETING INFORMATION
+    ========================== -->
+
+    <div class="meeting-card">
+
+        <h2>Meeting Information</h2>
+
+        <div class="details">
+
+            <div class="detail">
+                <div class="label">Date</div>
+
+                <div class="value">
+                    {{ meeting.formatted_date or meeting.date or "Not specified" }}
+                </div>
+            </div>
+
+
+            <div class="detail">
+                <div class="label">Time</div>
+
+                <div class="value">
+                    {{ meeting.formatted_time or meeting.time or "Not specified" }}
+                </div>
+            </div>
+
+
+            <div class="detail">
+                <div class="label">Duration</div>
+
+                <div class="value">
+                    {{ meeting.duration or "Not specified" }}
+                </div>
+            </div>
+
+
+            <div class="detail">
+                <div class="label">Meeting Type</div>
+
+                <div class="value">
+                    {{ meeting.meeting_type or "Virtual Meeting" }}
+                </div>
+            </div>
+
+        </div>
+
+
+        {% if meeting.description %}
+
+        <div style="margin-top:20px; color:#c4cad4; line-height:1.6;">
+
+            <strong>Description</strong>
+
+            <p style="margin-top:8px;">
+                {{ meeting.description }}
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =========================
+         JOIN SECTION
+    ========================== -->
+
+   <div class="join-section" id="joinSection">
+
+    {% if meeting.status == "upcoming" %}
+
+        <h2>Waiting for Host</h2>
+
+        <p>
+            The host has not started this meeting yet.
+            You will be able to join when the meeting goes live.
+        </p>
+
+        <button
+            class="join-btn"
+            disabled
+            style="opacity:0.5; cursor:not-allowed;"
+        >
+            ⏳ Waiting for Host
+        </button>
+
+    {% elif meeting.status == "live" %}
+
+        <h2>Meeting is Live 🔴</h2>
+
+        <p>
+            The host has started the meeting.
+            Allow camera and microphone access to join.
+        </p>
+
+        <button
+            class="join-btn"
+            onclick="joinMeeting()"
+        >
+            ▶ Join Meeting
+        </button>
+
+    {% elif meeting.status == "completed" %}
+
+        <h2>Meeting Ended</h2>
+
+        <p>
+            This meeting has already been completed.
+        </p>
+
+        <button
+            class="join-btn"
+            disabled
+            style="opacity:0.5; cursor:not-allowed;"
+        >
+            ✓ Meeting Completed
+        </button>
+
+    {% else %}
+
+        <h2>Meeting Unavailable</h2>
+
+        <p>
+            This meeting is currently unavailable.
+        </p>
+
+    {% endif %}
+
+</div>
+
+
+    <!-- =========================
+         VIRTUAL MEETING ROOM
+    ========================== -->
+<div id="attentionWarning" style="
+    display: none;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-weight: 600;
+">
+    ⚠️ Please pay attention to the meeting.
+    Your camera indicates that you may not be attentive.
+</div>
+    <div class="meeting-room" id="meetingRoom">
+
+        <div class="room-header">
+
+            <h2>
+                {{ meeting.title }}
+            </h2>
+
+            <div class="live-status">
+
+                <span class="live-dot"></span>
+
+                LIVE
+
+            </div>
+
+        </div>
+
+
+        <div class="video-container">
+
+            <video
+                id="localVideo"
+                autoplay
+                muted
+                playsinline>
+            </video>
+<div class="video-container" id="remoteVideoContainer">
+
+    <video
+        id="remoteVideo"
+        autoplay
+        playsinline>
+    </video>
+
+    <div class="remote-video-label">
+        👨‍💼 Host
+    </div>
+
+</div>
+            <div class="camera-label">
+                {{ session.get("user_name", "Participant") }}
+            </div>
+
+        </div>
+
+
+        <div class="controls">
+
+            <button
+                class="control-btn"
+                id="cameraBtn"
+                onclick="toggleCamera()">
+                📷 Camera On
+            </button>
+
+
+            <button
+                class="control-btn"
+                id="micBtn"
+                onclick="toggleMicrophone()">
+                🎤 Mic On
+            </button>
+            <button
+                class="control-btn"
+                onclick="openChat()">
+                💬 Chat
+            </button>
+
+            <button
+                class="control-btn leave-btn"
+                onclick="leaveMeeting()">
+                Leave Meeting
+            </button>
+
+        </div>
+
+    </div>
+
+<!-- CHAT PANEL -->
+
+<div class="chat-panel" id="chatPanel">
+
+    <div class="chat-header">
+        <strong>Meeting Chat</strong>
+
+        <button
+            onclick="closeChat()"
+            class="chat-close">
+            ✕
+        </button>
+    </div>
+
+    <div
+        class="chat-messages"
+        id="chatMessages">
+    </div>
+
+    <div class="chat-input-area">
+
+        <input
+            type="text"
+            id="chatInput"
+            placeholder="Type a message..."
+            autocomplete="off"
+            onkeydown="handleChatKey(event)">
+
+        <button
+            onclick="sendChatMessage()">
+            Send
+        </button>
+
+    </div>
+
+</div>
+    <!-- =========================
+         AI FEATURES
+    ========================== -->
+
+    <div class="ai-section">
+
+        <div class="ai-card">
+
+            <h3>AI Meeting Summary</h3>
+
+            <p>
+                Important discussion points, decisions and
+                action items will be generated automatically.
+            </p>
+
+        </div>
+
+
+        <div class="ai-card">
+
+            <h3>Attention Monitoring</h3>
+
+            <p>
+                AI will analyze face visibility, eye direction
+                and head position during the meeting.
+            </p>
+
+        </div>
+
+
+        <div class="ai-card">
+
+            <h3>Smart Moderation</h3>
+
+            <p>
+                Voice and chat content can be analyzed for
+                inappropriate or toxic language.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+const meetingStatus = "{{ meeting.status }}";
+const socket = io();
+socket.on("toxicity_moderation", function(data) {
+    console.log("MeetIQ toxicity moderation:", data);
+
+    if (data && data.message) {
+        alert(data.message);
+    }
+
+    if (data && data.action === "mute") {
+        microphoneEnabled = false;
+
+        if (localStream) {
+            localStream.getAudioTracks().forEach(function(track) {
+                track.enabled = false;
+            });
+        }
+
+        const micButton = document.getElementById("micBtn");
+
+        if (micButton) {
+            micButton.textContent = "🔇 Mic Off";
+        }
+
+        console.log("MeetIQ: Microphone automatically muted.");
+    }
+});
+const meetingId = "{{ meeting._id }}";
+let currentMeetingStatus = meetingStatus;
+let meetingStatusInterval = null;
+let localStream = null;
+let peerConnection = null;
+let cameraEnabled = true;
+let microphoneEnabled = true;
+let mediaRecorder = null;
+let recordedAudioChunks = [];
+let audioChunkTimer = null;
+let leavingMeeting = false;
+let processingAudioChunk = false;
+let attentionMonitor = null;
+let attentionScore = 0;
+let stableAttentionScore = 100;
+let attentionChangeCount = 0;
+let warningVisible = false;
+let lastAttentionAlert = 0;
+socket.on("connect", function() {
+
+    console.log(
+        "Connected to MeetIQ meeting server."
+    );
+
+});
+
+
+socket.on("participant_joined", function(data) {
+
+    console.log(
+        "Another participant joined the meeting."
+    );
+
+});
+
+
+socket.on("participant_left", function(data) {
+
+    console.log(
+        "A participant left the meeting."
+    );
+
+});
+socket.on("webrtc_offer", async function(data) {
+
+    console.log(
+        "WebRTC offer received from host."
+    );
+
+    try {
+
+        peerConnection =
+            new RTCPeerConnection({
+                iceServers: [
+                    {
+                        urls:
+                            "stun:stun.l.google.com:19302"
+                    }
+                ]
+            });
+
+
+        // Add participant camera and microphone
+        if (localStream) {
+
+            localStream
+                .getTracks()
+                .forEach(function(track) {
+
+                    peerConnection.addTrack(
+                        track,
+                        localStream
+                    );
+
+                });
+
+        }
+
+
+        // Receive host media
+        peerConnection.ontrack =
+    function(event) {
+
+        console.log(
+            "Host media received."
+        );
+
+        const remoteVideo =
+            document.getElementById(
+                "remoteVideo"
+            );
+
+        if (remoteVideo) {
+
+            remoteVideo.srcObject =
+                event.streams[0];
+
+            remoteVideo.play().catch(
+                function(error) {
+                    console.log(
+                        "Remote video play was blocked:",
+                        error
+                    );
+                }
+            );
+
+        }
+
+    };
+
+
+        // Send ICE candidates back to host
+        peerConnection.onicecandidate =
+            function(event) {
+
+                if (event.candidate) {
+
+                    socket.emit(
+                        "webrtc_ice_candidate",
+                        {
+                            meeting_id: meetingId,
+                            target_id: data.sender_id,
+                            candidate:
+                                event.candidate
+                        }
+                    );
+
+                }
+
+            };
+
+
+        await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(
+                data.offer
+            )
+        );
+
+
+        const answer =
+            await peerConnection.createAnswer();
+
+        await peerConnection.setLocalDescription(
+            answer
+        );
+
+
+        socket.emit(
+            "webrtc_answer",
+            {
+                meeting_id: meetingId,
+                target_id: data.sender_id,
+                answer: answer
+            }
+        );
+
+
+        console.log(
+            "WebRTC answer sent to host."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "WebRTC offer handling failed:",
+            error
+        );
+
+    }
+
+});
+socket.on("webrtc_ice_candidate", async function(data) {
+
+    console.log(
+        "ICE candidate received from host."
+    );
+
+    if (!peerConnection) {
+
+        console.error(
+            "WebRTC connection does not exist yet."
+        );
+
+        return;
+    }
+
+    try {
+
+        await peerConnection.addIceCandidate(
+            new RTCIceCandidate(
+                data.candidate
+            )
+        );
+
+        console.log(
+            "Host ICE candidate added successfully."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Could not add host ICE candidate:",
+            error
+        );
+
+    }
+
+});
+async function updateAttentionState(score) {
+
+    const warning =
+        document.getElementById("attentionWarning");
+
+    if (!warning) {
+        return;
+    }
+
+
+    // -----------------------------------------
+    // Stabilize the detection
+    // -----------------------------------------
+
+    if (score !== stableAttentionScore) {
+
+        attentionChangeCount++;
+
+        // Wait for 15 consecutive detections
+        if (attentionChangeCount >= 15) {
+
+            stableAttentionScore = score;
+            attentionChangeCount = 0;
+
+        } else {
+
+            return;
+        }
+
+    } else {
+
+        attentionChangeCount = 0;
+    }
+
+
+    // -----------------------------------------
+    // PARTICIPANT WARNING
+    // -----------------------------------------
+
+    if (score === 0) {
+
+    // No face = immediate warning
+    warning.textContent =
+        "⚠️ Please return to the camera. You appear to be away.";
+
+    warning.style.display = "block";
+
+    warningVisible = true;
+
+}
+else if (stableAttentionScore === 75) {
+
+    warning.textContent =
+        "⚠️ Please pay attention to the meeting.";
+
+    warning.style.display = "block";
+
+    warningVisible = true;
+
+}
+else {
+
+    warning.style.display = "none";
+
+    warningVisible = false;
+}
+    // -----------------------------------------
+    // SEND ALERT TO ADMIN
+    // -----------------------------------------
+
+    if (
+        stableAttentionScore === 75 ||
+        stableAttentionScore === 0
+    ) {
+
+        const now = Date.now();
+
+        // Send at most one alert every 10 seconds
+        if (now - lastAttentionAlert < 10000) {
+            return;
+        }
+
+        lastAttentionAlert = now;
+
+
+        try {
+
+            const response = await fetch(
+                "/api/attention/{{ meeting._id }}",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        score: stableAttentionScore
+                    })
+                }
+            );
+
+
+            const data =
+                await response.json();
+
+
+            console.log(
+                "Attention alert sent:",
+                data
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "Could not send attention alert:",
+                error
+            );
+
+        }
+    }
+}
+/* =========================
+   AI ATTENTION TRACKING
+========================= */
+
+let lastVideoTime = -1;
+
+function startAttentionTracking() {
+    console.log("MeetIQ attention detection loop started.");
+    const video = document.getElementById("localVideo");
+
+    if (!video || !window.meetIQFaceLandmarker) {
+        console.error("Attention tracking is not ready.");
+        return;
+    }
+
+    function detectAttention() {
+
+        if (
+            video.readyState >= 2 &&
+            video.currentTime !== lastVideoTime
+        ) {
+
+            lastVideoTime = video.currentTime;
+
+            const result =
+                window.meetIQFaceLandmarker.detectForVideo(
+                    video,
+                    performance.now()
+                );
+
+            let score = 0;
+
+            if (
+                result.faceLandmarks &&
+                result.faceLandmarks.length > 0
+            ) {
+
+                const landmarks =
+                    result.faceLandmarks[0];
+
+                /*
+                 * Eye landmarks
+                 */
+
+                const leftEyeTop = landmarks[159];
+                const leftEyeBottom = landmarks[145];
+
+                const rightEyeTop = landmarks[386];
+                const rightEyeBottom = landmarks[374];
+
+                const leftEyeOpen =
+                    Math.abs(
+                        leftEyeTop.y -
+                        leftEyeBottom.y
+                    ) > 0.012;
+
+                const rightEyeOpen =
+                    Math.abs(
+                        rightEyeTop.y -
+                        rightEyeBottom.y
+                    ) > 0.012;
+
+                const eyesOpen =
+                    leftEyeOpen &&
+                    rightEyeOpen;
+
+
+                /*
+                 * Head position
+                 */
+
+                const nose = landmarks[1];
+
+                const noseCenterX = nose.x;
+
+                const headFacingCamera =
+                    noseCenterX > 0.35 &&
+                    noseCenterX < 0.65;
+
+
+                /*
+                 * Final score
+                 */
+
+                if (
+                    eyesOpen &&
+                    headFacingCamera
+                ) {
+
+                    score = 100;
+
+                } else {
+
+                    score = 75;
+                }
+
+            } else {
+
+                score = 0;
+            }
+
+
+            /*
+             * Update warning
+             */
+
+            attentionScore = score;
+
+            updateAttentionState(score);
+
+            console.log(
+                "MeetIQ Attention Score:",
+                score
+            );
+        }
+
+
+        requestAnimationFrame(
+            detectAttention
+        );
+    }
+
+
+    detectAttention();
+}
+/*
+=========================================================
+REAL-TIME AUDIO CHUNK CONTROL
+=========================================================
+*/
+
+function startAudioChunkTimer() {
+    if (audioChunkTimer) {
+        clearTimeout(audioChunkTimer);
+    }
+
+    audioChunkTimer = setTimeout(function() {
+        audioChunkTimer = null;
+
+        if (
+            mediaRecorder &&
+            mediaRecorder.state === "recording" &&
+            !leavingMeeting
+        ) {
+            console.log(
+                "MeetIQ: 5 seconds completed. Stopping current audio chunk."
+            );
+
+            mediaRecorder.stop();
+        }
+    }, 5000);
+}
+
+/* =========================
+   JOIN MEETING
+========================= */
+
+async function joinMeeting() {
+    if (localStream || mediaRecorder) {
+        console.log("MeetIQ: Meeting is already joined.");
+        return;
+    }
+
+    if (meetingStatus !== "live") {
+        alert("The host has not started the meeting yet.");
+        return;
+    }
+
+    leavingMeeting = false;
+
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        });
+
+        const localVideo = document.getElementById("localVideo");
+
+        if (localVideo) {
+            localVideo.srcObject = localStream;
+            await localVideo.play().catch(function(error) {
+                console.log("Local video autoplay was blocked:", error);
+            });
+        }
+
+        document.getElementById("joinSection").style.display = "none";
+        document.getElementById("meetingRoom").style.display = "block";
+
+        console.log("MeetIQ: Camera and microphone connected.");
+
+        socket.emit("join_meeting", {
+            meeting_id: meetingId
+        });
+
+        // REAL-TIME AUDIO MODERATION
+        // One complete WebM recording at a time.
+        // Stop -> upload -> wait for response -> start next recording.
+        const audioTracks = localStream.getAudioTracks();
+
+        if (audioTracks.length === 0) {
+            throw new Error("No microphone audio track was found.");
+        }
+
+        const audioStream = new MediaStream(audioTracks);
+        recordedAudioChunks = [];
+
+        let recorderOptions = {};
+
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+            recorderOptions.mimeType = "audio/webm;codecs=opus";
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+            recorderOptions.mimeType = "audio/webm";
+        }
+
+        mediaRecorder = new MediaRecorder(audioStream, recorderOptions);
+
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data && event.data.size > 0) {
+                recordedAudioChunks.push(event.data);
+
+                console.log(
+                    "MeetIQ: Audio data received:",
+                    event.data.size,
+                    "bytes"
+                );
+            }
+        };
+
+        mediaRecorder.onerror = function(event) {
+            console.error("MeetIQ: MediaRecorder error:", event.error);
+        };
+
+        mediaRecorder.onstop = async function() {
+            if (leavingMeeting) {
+                recordedAudioChunks = [];
+                return;
+            }
+
+            if (recordedAudioChunks.length === 0) {
+                console.log("MeetIQ: No audio data in this chunk.");
+            } else {
+                const audioType = mediaRecorder.mimeType || "audio/webm";
+
+                const audioBlob = new Blob(
+                    recordedAudioChunks,
+                    { type: audioType }
+                );
+
+                console.log(
+                    "MeetIQ: Sending complete real-time audio chunk:",
+                    audioBlob.size,
+                    "bytes"
+                );
+
+                const formData = new FormData();
+
+                formData.append(
+                    "audio",
+                    audioBlob,
+                    "realtime-audio.webm"
+                );
+
+                formData.append("meeting_id", meetingId);
+
+                processingAudioChunk = true;
+
+                try {
+                    const response = await fetch(
+                        "/api/meeting-audio/realtime",
+                        {
+                            method: "POST",
+                            body: formData
+                        }
+                    );
+
+                    let data = null;
+
+                    try {
+                        data = await response.json();
+                    } catch (jsonError) {
+                        console.error(
+                            "MeetIQ: Backend returned invalid JSON:",
+                            jsonError
+                        );
+                    }
+
+                    if (!response.ok) {
+                        console.error(
+                            "MeetIQ: Real-time moderation request failed:",
+                            response.status,
+                            data
+                        );
+                    } else {
+                        console.log(
+                            "MeetIQ real-time moderation result:",
+                            data
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "MeetIQ real-time audio error:",
+                        error
+                    );
+                } finally {
+                    processingAudioChunk = false;
+                }
+            }
+
+            recordedAudioChunks = [];
+
+            if (
+                mediaRecorder &&
+                mediaRecorder.state === "inactive" &&
+                !leavingMeeting &&
+                currentMeetingStatus === "live"
+            ) {
+                mediaRecorder.start();
+
+                console.log(
+                    "MeetIQ: New 5-second audio recording started."
+                );
+
+                startAudioChunkTimer();
+            }
+        };
+
+        mediaRecorder.start();
+
+        console.log(
+            "MeetIQ: Real-time audio recording started."
+        );
+
+        startAudioChunkTimer();
+
+        // ATTENTION MONITORING
+        if (window.initializeAttentionTracking) {
+            await window.initializeAttentionTracking();
+        }
+
+        console.log("MeetIQ: About to start attention detection...");
+
+        startAttentionTracking();
+
+        attentionScore = 100;
+        updateAttentionDisplay();
+
+        console.log("MeetIQ: Joined meeting room successfully.");
+
+    } catch (error) {
+        console.error(
+            "MeetIQ: Media access/join error:",
+            error
+        );
+
+        if (audioChunkTimer) {
+            clearTimeout(audioChunkTimer);
+            audioChunkTimer = null;
+        }
+
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            try {
+                mediaRecorder.stop();
+            } catch (stopError) {
+                console.error(
+                    "MeetIQ: Could not stop recorder after join error:",
+                    stopError
+                );
+            }
+        }
+
+        if (localStream) {
+            localStream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+
+            localStream = null;
+        }
+
+        mediaRecorder = null;
+
+        alert(
+            "Camera and microphone access is required to join the meeting."
+        );
+    }
+}
+
+/* =========================
+   ATTENTION DISPLAY
+========================= */
+
+function updateAttentionDisplay() {
+
+    const attentionElement =
+        document.getElementById("attentionScore");
+
+    if (!attentionElement) {
+        return;
+    }
+
+    attentionElement.textContent =
+        "Attention: " + attentionScore + "%";
+
+}
+/* =========================
+   CAMERA
+========================= */
+
+function toggleCamera() {
+
+    if (!localStream) {
+        return;
+    }
+
+    const videoTracks = localStream.getVideoTracks();
+
+    if (videoTracks.length === 0) {
+        return;
+    }
+
+    cameraEnabled = !cameraEnabled;
+
+    videoTracks[0].enabled = cameraEnabled;
+
+    document.getElementById("cameraBtn").textContent =
+        cameraEnabled
+            ? "📷 Camera On"
+            : "📷 Camera Off";
+
+}
+
+
+/* =========================
+   MICROPHONE
+========================= */
+
+function toggleMicrophone() {
+
+    if (!localStream) {
+        return;
+    }
+
+    const audioTracks = localStream.getAudioTracks();
+
+    if (audioTracks.length === 0) {
+        return;
+    }
+
+    microphoneEnabled = !microphoneEnabled;
+
+    audioTracks[0].enabled = microphoneEnabled;
+
+    document.getElementById("micBtn").textContent =
+        microphoneEnabled
+            ? "🎤 Mic On"
+            : "🎤 Mic Off";
+
+}
+
+
+/* =========================
+   LEAVE MEETING
+========================= */
+
+async function leaveMeeting() {
+    console.log("MeetIQ: Leaving meeting...");
+
+    leavingMeeting = true;
+
+    if (audioChunkTimer) {
+        clearTimeout(audioChunkTimer);
+        audioChunkTimer = null;
+    }
+
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+        console.log("MeetIQ: Stopping current audio chunk...");
+
+        await new Promise(function(resolve) {
+            const recorder = mediaRecorder;
+
+            recorder.addEventListener(
+                "stop",
+                function() {
+                    resolve();
+                },
+                { once: true }
+            );
+
+            try {
+                recorder.stop();
+            } catch (error) {
+                console.error(
+                    "MeetIQ: Could not stop audio recorder:",
+                    error
+                );
+                resolve();
+            }
+        });
+    }
+
+    recordedAudioChunks = [];
+
+    if (localStream) {
+        localStream.getTracks().forEach(function(track) {
+            track.stop();
+        });
+
+        localStream = null;
+    }
+
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    mediaRecorder = null;
+
+    console.log("MeetIQ: Meeting resources stopped.");
+
+    window.location.href =
+        "{{ url_for('participant_dashboard') }}";
+}
+
+async function checkMeetingStatus() {
+
+    try {
+
+        const response = await fetch(
+            "/api/participant/meeting-status/{{ meeting._id }}"
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            return;
+        }
+
+        const newStatus = data.status;
+
+        // Host has started the meeting
+        if (
+            newStatus === "live" &&
+            currentMeetingStatus !== "live"
+        ) {
+            currentMeetingStatus = "live";
+
+            window.location.reload();
+            return;
+        }
+
+        // Host has ended the meeting
+        if (
+            newStatus === "completed" &&
+            currentMeetingStatus === "live"
+        ) {
+            currentMeetingStatus = "completed";
+
+            leavingMeeting = true;
+
+            if (audioChunkTimer) {
+                clearTimeout(audioChunkTimer);
+                audioChunkTimer = null;
+            }
+
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                try {
+                    mediaRecorder.stop();
+                } catch (error) {
+                    console.error(
+                        "MeetIQ: Could not stop recorder after meeting ended:",
+                        error
+                    );
+                }
+            }
+
+            recordedAudioChunks = [];
+
+            if (attentionMonitor) {
+                clearInterval(attentionMonitor);
+                attentionMonitor = null;
+            }
+
+            if (localStream) {
+                localStream.getTracks().forEach(function(track) {
+                    track.stop();
+                });
+
+                localStream = null;
+            }
+
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            mediaRecorder = null;
+
+            window.location.reload();
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Could not check meeting status:",
+            error
+        );
+
+    }
+}
+meetingStatusInterval = setInterval(
+    checkMeetingStatus,
+    5000
+);
+socket.on("connect", function() {
+    console.log("Socket connected:", socket.id);
+});
+
+socket.on("disconnect", function() {
+    console.log("Socket disconnected");
+});
+
+socket.on("connect_error", function(error) {
+    console.error("Socket connection error:", error);
+});
+
+
+function openChat() {
+    document.getElementById("chatPanel").style.display = "flex";
+
+    const input = document.getElementById("chatInput");
+    if (input) {
+        input.focus();
+    }
+}
+
+function closeChat() {
+    document.getElementById("chatPanel").style.display = "none";
+}
+
+function handleChatKey(event) {
+    if (event.key === "Enter") {
+        sendChatMessage();
+    }
+}
+
+function sendChatMessage() {
+    const input = document.getElementById("chatInput");
+
+    if (!input) {
+        return;
+    }
+
+    const message = input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    socket.emit("send_chat_message", {
+        meeting_id: meetingId,
+        message: message
+    });
+
+    input.value = "";
+}
+
+socket.on("receive_chat_message", function(data) {
+    const chatMessages =
+        document.getElementById("chatMessages");
+
+    if (!chatMessages) {
+        return;
+    }
+
+    const messageDiv =
+        document.createElement("div");
+
+    messageDiv.className = "chat-message";
+
+    const sender =
+        document.createElement("strong");
+
+    sender.textContent =
+        data.sender_name || "User";
+
+    const message =
+        document.createElement("span");
+
+    message.textContent =
+        data.message || "";
+
+    messageDiv.appendChild(sender);
+    messageDiv.appendChild(message);
+
+    chatMessages.appendChild(messageDiv);
+
+    chatMessages.scrollTop =
+        chatMessages.scrollHeight;
+});
+</script>
+
+</body>
+</html>

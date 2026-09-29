@@ -1,13 +1,11 @@
-```javascript
-// =========================================================
 // PASSWORD SHOW / HIDE
-// =========================================================
 
 function togglePassword(inputId, button) {
 
     const input = document.getElementById(inputId);
 
     if (!input) {
+        console.error("Password input not found:", inputId);
         return;
     }
 
@@ -25,17 +23,15 @@ function togglePassword(inputId, button) {
 }
 
 
-// =========================================================
 // FORM SUBMIT ANIMATION
-// =========================================================
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", function () {
 
     const forms = document.querySelectorAll("form");
 
-    forms.forEach(form => {
+    forms.forEach(function (form) {
 
-        form.addEventListener("submit", () => {
+        form.addEventListener("submit", function () {
 
             const button = form.querySelector(".primary-btn");
 
@@ -52,4 +48,3 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
 });
-```

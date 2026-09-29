@@ -4,9 +4,14 @@
 <head>
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>MeetIQ | Participant Dashboard</title>
+
 
     <style>
 
@@ -16,8 +21,14 @@
             padding: 0;
         }
 
+
         body {
-            font-family: Inter, Arial, sans-serif;
+
+            font-family:
+                Inter,
+                Arial,
+                sans-serif;
+
             background:
                 radial-gradient(
                     circle at 10% 10%,
@@ -32,17 +43,31 @@
                 #080b16;
 
             color: #f5f7ff;
+
             min-height: 100vh;
+
             font-size: 15px;
         }
 
+
         a {
+
             text-decoration: none;
+
             color: inherit;
         }
 
+
+        button {
+
+            font-family: inherit;
+        }
+
+
         .layout {
+
             display: flex;
+
             min-height: 100vh;
         }
 
@@ -50,6 +75,7 @@
         /* ================= SIDEBAR ================= */
 
         .sidebar {
+
             width: 255px;
 
             background:
@@ -66,26 +92,37 @@
             top: 0;
             bottom: 0;
 
-            z-index: 10;
+            z-index: 100;
+
+            transition:
+                transform 0.3s ease;
         }
 
+
         .brand {
+
             display: flex;
+
             align-items: center;
+
             gap: 12px;
 
             padding:
                 0 10px 30px;
         }
 
+
         .brand-icon {
+
             width: 42px;
             height: 42px;
 
             border-radius: 12px;
 
             display: flex;
+
             align-items: center;
+
             justify-content: center;
 
             background:
@@ -100,28 +137,156 @@
                 rgba(108,99,255,0.35);
         }
 
+
         .brand-icon svg {
+
             width: 23px;
             height: 23px;
         }
 
+
         .brand-name {
+
             font-size: 23px;
+
             font-weight: 800;
         }
 
+
         .brand-name span {
+
             color: #7c74ff;
+        }
+
+
+        /* ================= SIDEBAR CLOSE BUTTON ================= */
+
+        .sidebar-close {
+
+            position: absolute;
+
+            top: 22px;
+            right: 18px;
+
+            width: 32px;
+            height: 32px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            background:
+                rgba(255,255,255,0.06);
+
+            color: #b6bfd2;
+
+            font-size: 24px;
+
+            line-height: 1;
+
+            cursor: pointer;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            z-index: 110;
+
+            transition: 0.2s;
+        }
+
+
+        .sidebar-close:hover {
+
+            background:
+                rgba(108,99,255,0.20);
+
+            color: white;
+        }
+
+
+        /* ================= SIDEBAR OPEN BUTTON ================= */
+
+        .sidebar-open {
+
+            position: fixed;
+
+            top: 22px;
+            left: 18px;
+
+            width: 40px;
+            height: 40px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background:
+                rgba(255,255,255,0.08);
+
+            border:
+                1px solid rgba(255,255,255,0.08);
+
+            color: white;
+
+            font-size: 20px;
+
+            cursor: pointer;
+
+            display: none;
+
+            align-items: center;
+
+            justify-content: center;
+
+            z-index: 90;
+
+            transition: 0.2s;
+        }
+
+
+        .sidebar-open:hover {
+
+            background:
+                rgba(108,99,255,0.20);
+        }
+
+
+        /* ================= SIDEBAR CLOSED ================= */
+
+        body.sidebar-closed .sidebar {
+
+            transform:
+                translateX(-100%);
+        }
+
+
+        body.sidebar-closed .main {
+
+            margin-left: 0;
+
+            width: 100%;
+        }
+
+
+        body.sidebar-closed .sidebar-open {
+
+            display: flex;
         }
 
 
         /* ================= NAVIGATION ================= */
 
         .nav-section {
+
             margin-top: 15px;
         }
 
+
         .nav-title {
+
             color: #71798f;
 
             font-size: 11px;
@@ -135,8 +300,11 @@
             margin-bottom: 10px;
         }
 
+
         .nav-item {
+
             display: flex;
+
             align-items: center;
 
             gap: 13px;
@@ -156,25 +324,33 @@
             font-size: 15px;
         }
 
+
         .nav-item:hover,
         .nav-item.active {
+
             color: white;
 
             background:
                 rgba(108,99,255,0.14);
         }
 
+
         .nav-item.active {
+
             border-left:
                 3px solid #7c74ff;
         }
 
+
         .nav-item svg {
+
             width: 19px;
             height: 19px;
         }
 
+
         .sidebar-bottom {
+
             position: absolute;
 
             bottom: 22px;
@@ -187,6 +363,7 @@
         /* ================= MAIN ================= */
 
         .main {
+
             margin-left: 255px;
 
             width:
@@ -194,12 +371,17 @@
 
             padding:
                 25px 32px 40px;
+
+            transition:
+                margin-left 0.3s ease,
+                width 0.3s ease;
         }
 
 
         /* ================= TOPBAR ================= */
 
         .topbar {
+
             display: flex;
 
             justify-content: space-between;
@@ -209,19 +391,25 @@
             margin-bottom: 25px;
         }
 
+
         .page-heading h2 {
+
             font-size: 25px;
 
             margin-bottom: 5px;
         }
 
+
         .page-heading p {
+
             color: #7e879e;
 
             font-size: 13px;
         }
 
+
         .topbar-right {
+
             display: flex;
 
             align-items: center;
@@ -229,8 +417,19 @@
             gap: 15px;
         }
 
+
+        /* ================= NOTIFICATIONS ================= */
+
+        .notification-wrapper {
+
+            position: relative;
+        }
+
+
         .notification {
+
             width: 40px;
+
             height: 40px;
 
             border-radius: 10px;
@@ -238,19 +437,222 @@
             background:
                 rgba(255,255,255,0.05);
 
+            border:
+                1px solid rgba(255,255,255,0.06);
+
             display: flex;
 
             align-items: center;
-            justify-content: center;
-        }
 
-        .notification svg {
-            width: 19px;
+            justify-content: center;
 
             color: #b6bfd2;
+
+            cursor: pointer;
+
+            transition: 0.2s;
         }
 
+
+        .notification:hover {
+
+            background:
+                rgba(255,255,255,0.08);
+
+            color: white;
+        }
+
+
+        .notification svg {
+
+            width: 19px;
+
+            color: currentColor;
+        }
+
+
+        .notification-badge {
+
+            position: absolute;
+
+            top: -5px;
+
+            right: -5px;
+
+            min-width: 18px;
+
+            height: 18px;
+
+            padding: 0 5px;
+
+            border-radius: 20px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            background: #ff5d73;
+
+            color: white;
+
+            font-size: 10px;
+
+            font-weight: 800;
+
+            border: 2px solid #080b16;
+        }
+
+
+        .notification-panel {
+
+            position: absolute;
+
+            top: 52px;
+
+            right: 0;
+
+            width: 370px;
+
+            max-height: 430px;
+
+            overflow-y: auto;
+
+            background: #111725;
+
+            border:
+                1px solid rgba(255,255,255,0.09);
+
+            border-radius: 14px;
+
+            box-shadow:
+                0 18px 45px
+                rgba(0,0,0,0.40);
+
+            display: none;
+
+            z-index: 100;
+        }
+
+
+        .notification-panel.show {
+
+            display: block;
+        }
+
+
+        .notification-panel-header {
+
+            padding: 16px 18px;
+
+            border-bottom:
+                1px solid rgba(255,255,255,0.07);
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+        }
+
+
+        .notification-panel-header strong {
+
+            font-size: 14px;
+        }
+
+
+        .notification-panel-header span {
+
+            color: #7e879e;
+
+            font-size: 11px;
+        }
+
+
+        .notification-entry {
+
+            display: block;
+
+            padding: 15px 17px;
+
+            border-bottom:
+                1px solid rgba(255,255,255,0.05);
+
+            transition: 0.2s;
+        }
+
+
+        .notification-entry:hover {
+
+            background:
+                rgba(108,99,255,0.08);
+        }
+
+
+        .notification-entry-title {
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            margin-bottom: 5px;
+        }
+
+
+        .notification-entry-message {
+
+            color: #8b94a9;
+
+            font-size: 11px;
+
+            line-height: 1.5;
+
+            margin-bottom: 7px;
+        }
+
+
+        .notification-entry-meta {
+
+            color: #626c82;
+
+            font-size: 10px;
+        }
+
+
+        .notification-unread {
+
+            display: inline-block;
+
+            width: 7px;
+
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #6c63ff;
+
+            margin-left: 7px;
+        }
+
+
+        .notification-empty {
+
+            padding: 32px 18px;
+
+            text-align: center;
+
+            color: #7e879e;
+
+            font-size: 12px;
+        }
+
+
+        /* ================= PROFILE ================= */
+
         .profile {
+
             display: flex;
 
             align-items: center;
@@ -258,7 +660,9 @@
             gap: 10px;
         }
 
+
         .avatar {
+
             width: 38px;
             height: 38px;
 
@@ -274,18 +678,23 @@
             display: flex;
 
             align-items: center;
+
             justify-content: center;
 
             font-weight: 700;
         }
 
+
         .profile-info strong {
+
             display: block;
 
             font-size: 13px;
         }
 
+
         .profile-info span {
+
             color: #777f94;
 
             font-size: 11px;
@@ -295,6 +704,7 @@
         /* ================= WELCOME ================= */
 
         .welcome {
+
             position: relative;
 
             overflow: hidden;
@@ -317,19 +727,25 @@
                 1px solid rgba(255,255,255,0.08);
         }
 
+
         .welcome-content {
+
             position: relative;
 
             z-index: 2;
         }
 
+
         .welcome-content h1 {
+
             font-size: 32px;
 
             margin-bottom: 8px;
         }
 
+
         .welcome-content p {
+
             color: #a1a9bc;
 
             font-size: 15px;
@@ -337,10 +753,13 @@
             margin-bottom: 20px;
         }
 
+
         .action-button {
+
             display: inline-flex;
 
             align-items: center;
+
             justify-content: center;
 
             gap: 7px;
@@ -367,7 +786,9 @@
                 rgba(92,81,255,0.22);
         }
 
+
         .welcome-glow {
+
             position: absolute;
 
             width: 240px;
@@ -388,6 +809,7 @@
         /* ================= STATS ================= */
 
         .stats-grid {
+
             display: grid;
 
             grid-template-columns:
@@ -398,7 +820,9 @@
             margin-bottom: 28px;
         }
 
+
         .stat-card {
+
             background:
                 rgba(255,255,255,0.035);
 
@@ -410,7 +834,9 @@
             padding: 20px;
         }
 
+
         .stat-top {
+
             display: flex;
 
             justify-content: space-between;
@@ -420,13 +846,17 @@
             margin-bottom: 14px;
         }
 
+
         .stat-label {
+
             color: #858da2;
 
             font-size: 14px;
         }
 
+
         .stat-icon {
+
             width: 40px;
             height: 40px;
 
@@ -435,6 +865,7 @@
             display: flex;
 
             align-items: center;
+
             justify-content: center;
 
             background:
@@ -443,11 +874,15 @@
             color: #8c84ff;
         }
 
+
         .stat-icon svg {
+
             width: 20px;
         }
 
+
         .stat-value {
+
             font-size: 30px;
 
             font-weight: 800;
@@ -455,7 +890,9 @@
             margin-bottom: 7px;
         }
 
+
         .stat-change {
+
             color: #50d7a2;
 
             font-size: 13px;
@@ -465,12 +902,15 @@
         /* ================= SECTIONS ================= */
 
         .section-title {
+
             font-size: 19px;
 
             margin-bottom: 5px;
         }
 
+
         .section-subtitle {
+
             color: #747d92;
 
             font-size: 14px;
@@ -478,7 +918,9 @@
             margin-bottom: 16px;
         }
 
+
         .content-grid {
+
             display: grid;
 
             grid-template-columns:
@@ -489,7 +931,9 @@
             margin-bottom: 25px;
         }
 
+
         .panel {
+
             background:
                 rgba(255,255,255,0.035);
 
@@ -505,6 +949,7 @@
         /* ================= MEETINGS ================= */
 
         .meeting-row {
+
             display: flex;
 
             justify-content: space-between;
@@ -517,11 +962,15 @@
                 1px solid rgba(255,255,255,0.06);
         }
 
+
         .meeting-row:last-child {
+
             border-bottom: none;
         }
 
+
         .meeting-left {
+
             display: flex;
 
             align-items: center;
@@ -529,7 +978,9 @@
             gap: 13px;
         }
 
+
         .meeting-icon {
+
             width: 39px;
             height: 39px;
 
@@ -543,14 +994,19 @@
             display: flex;
 
             align-items: center;
+
             justify-content: center;
         }
 
+
         .meeting-icon svg {
+
             width: 19px;
         }
 
+
         .meeting-name {
+
             font-weight: 700;
 
             font-size: 15px;
@@ -558,13 +1014,17 @@
             margin-bottom: 4px;
         }
 
+
         .meeting-meta {
+
             color: #747d92;
 
             font-size: 13px;
         }
 
+
         .status {
+
             padding: 5px 10px;
 
             border-radius: 20px;
@@ -574,24 +1034,61 @@
             font-weight: 700;
         }
 
+
         .status.upcoming {
+
             color: #79a5ff;
 
             background:
                 rgba(80,130,255,0.12);
         }
 
+
         .status.completed {
+
             color: #50d7a2;
 
             background:
                 rgba(80,215,162,0.10);
         }
 
+        .meeting-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 12px;
+        }
+
+        .meeting-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 12px;
+            border-radius: 9px;
+            background: rgba(108,99,255,0.16);
+            color: #a69fff;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid rgba(108,99,255,0.20);
+        }
+
+        .meeting-action.live {
+            background: rgba(80,215,162,0.12);
+            color: #50d7a2;
+            border-color: rgba(80,215,162,0.20);
+        }
+
+        .meeting-action.summary {
+            background: rgba(0,196,255,0.10);
+            color: #7edfff;
+            border-color: rgba(0,196,255,0.18);
+        }
+
 
         /* ================= AI ================= */
 
         .ai-panel {
+
             margin-bottom: 25px;
 
             background:
@@ -610,7 +1107,9 @@
             padding: 23px;
         }
 
+
         .ai-header {
+
             display: flex;
 
             align-items: center;
@@ -620,7 +1119,9 @@
             margin-bottom: 9px;
         }
 
+
         .ai-icon {
+
             width: 43px;
             height: 43px;
 
@@ -629,6 +1130,7 @@
             display: flex;
 
             align-items: center;
+
             justify-content: center;
 
             background:
@@ -639,17 +1141,23 @@
                 );
         }
 
+
         .ai-icon svg {
+
             width: 22px;
         }
 
+
         .ai-title {
+
             font-size: 19px;
 
             font-weight: 800;
         }
 
+
         .ai-description {
+
             color: #858da2;
 
             font-size: 14px;
@@ -657,7 +1165,9 @@
             margin-bottom: 17px;
         }
 
+
         .ai-features {
+
             display: grid;
 
             grid-template-columns:
@@ -666,7 +1176,9 @@
             gap: 12px;
         }
 
+
         .ai-feature {
+
             padding: 13px;
 
             border-radius: 11px;
@@ -679,7 +1191,9 @@
             font-size: 14px;
         }
 
+
         .ai-feature strong {
+
             display: block;
 
             color: white;
@@ -691,6 +1205,7 @@
         /* ================= QUICK ACTIONS ================= */
 
         .quick-actions {
+
             display: grid;
 
             grid-template-columns:
@@ -699,7 +1214,9 @@
             gap: 13px;
         }
 
+
         .quick-card {
+
             display: block;
 
             padding: 17px;
@@ -713,9 +1230,13 @@
             border-radius: 13px;
 
             transition: 0.25s;
+
+            cursor: pointer;
         }
 
+
         .quick-card:hover {
+
             transform: translateY(-3px);
 
             border-color:
@@ -725,7 +1246,9 @@
                 rgba(108,99,255,0.07);
         }
 
+
         .quick-card-icon {
+
             width: 37px;
             height: 37px;
 
@@ -734,6 +1257,7 @@
             display: flex;
 
             align-items: center;
+
             justify-content: center;
 
             background:
@@ -744,11 +1268,15 @@
             margin-bottom: 12px;
         }
 
+
         .quick-card-icon svg {
+
             width: 19px;
         }
 
+
         .quick-card strong {
+
             display: block;
 
             margin-bottom: 4px;
@@ -756,7 +1284,9 @@
             font-size: 14px;
         }
 
+
         .quick-card p {
+
             color: #727b91;
 
             font-size: 12px;
@@ -768,27 +1298,37 @@
         @media (max-width: 1100px) {
 
             .stats-grid {
+
                 grid-template-columns:
                     repeat(2, 1fr);
             }
+
 
             .quick-actions {
+
                 grid-template-columns:
                     repeat(2, 1fr);
             }
 
+
             .content-grid {
+
                 grid-template-columns: 1fr;
             }
+
         }
+
 
         @media (max-width: 800px) {
 
             .sidebar {
+
                 width: 210px;
             }
 
+
             .main {
+
                 margin-left: 210px;
 
                 width:
@@ -797,31 +1337,69 @@
                 padding: 20px;
             }
 
+
             .ai-features {
+
                 grid-template-columns: 1fr;
             }
+
         }
+
 
         @media (max-width: 600px) {
 
             .sidebar {
+
                 display: none;
             }
 
+
+            .sidebar-open {
+
+                display: none !important;
+            }
+
+
             .main {
+
                 margin-left: 0;
 
                 width: 100%;
             }
 
+
             .stats-grid,
             .quick-actions {
+
                 grid-template-columns: 1fr;
             }
 
+
             .welcome-content h1 {
+
                 font-size: 26px;
             }
+
+
+            .notification-panel {
+
+                position: fixed;
+
+                top: 75px;
+
+                left: 18px;
+
+                right: 18px;
+
+                width: auto;
+            }
+
+
+            .profile {
+
+                display: none;
+            }
+
         }
 
     </style>
@@ -831,6 +1409,7 @@
 
 <body>
 
+
 <div class="layout">
 
 
@@ -838,7 +1417,23 @@
 
     <aside class="sidebar">
 
+
+        <!-- CLOSE SIDEBAR -->
+
+        <button
+            type="button"
+            class="sidebar-close"
+            onclick="closeSidebar()"
+            aria-label="Close sidebar"
+        >
+            ×
+        </button>
+
+
+        <!-- BRAND -->
+
         <div class="brand">
+
 
             <div class="brand-icon">
 
@@ -871,21 +1466,34 @@
 
             </div>
 
+
             <div class="brand-name">
+
                 Meet<span>IQ</span>
+
             </div>
+
 
         </div>
 
 
+
+        <!-- WORKSPACE -->
+
         <div class="nav-section">
+
 
             <div class="nav-title">
                 Workspace
             </div>
 
 
-            <div class="nav-item active">
+            <!-- DASHBOARD -->
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="nav-item active"
+            >
 
                 <svg
                     fill="none"
@@ -929,12 +1537,15 @@
 
                 Dashboard
 
-            </div>
+            </a>
 
 
-            <div
+
+            <!-- MY MEETINGS -->
+
+            <a
+                href="{{ url_for('participant_meetings') }}"
                 class="nav-item"
-                onclick="comingSoon('My Meetings')"
             >
 
                 <svg
@@ -951,106 +1562,102 @@
                         rx="2"
                     />
 
-                    <path d="M8 3v4M16 3v4M3 10h18"/>
+                    <path
+                        d="M8 3v4M16 3v4M3 10h18"
+                    />
 
                 </svg>
 
                 My Meetings
 
-            </div>
+            </a>
 
 
-            <div
-                class="nav-item"
-                onclick="comingSoon('Attendance')"
-            >
 
-                <svg
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
+            <!-- ATTENDANCE -->
 
-                    <path d="M5 12l4 4L19 6"/>
+            <!-- ATTENDANCE -->
 
-                    <rect
-                        x="3"
-                        y="3"
-                        width="18"
-                        height="18"
-                        rx="3"
-                    />
+<a
+    href="{{ url_for('participant_attendance') }}"
+    class="nav-item"
+>
 
-                </svg>
+    <svg
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+    >
+        <path
+            d="M5 12l4 4L19 6"
+        />
 
-                Attendance
+        <rect
+            x="3"
+            y="3"
+            width="18"
+            height="18"
+            rx="3"
+        />
+    </svg>
 
-            </div>
+    Attendance
 
-        </div>
+</a>
 
+
+
+        <!-- AI & INSIGHTS -->
 
         <div class="nav-section">
+
 
             <div class="nav-title">
                 AI & Insights
             </div>
+<!-- AI INSIGHTS -->
 
+           <a
+    href="{{ url_for('participant_insights') }}"
+    class="nav-item"
+>
+    <svg
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+    >
+        <path
+            d="M9 19V6l3-3 3 3v13"
+        />
+        <path
+            d="M5 19h14"
+        />
+        <path
+            d="M6 15h3M15 12h3M6 11h3"
+        />
+    </svg>
 
-            <div
-                class="nav-item"
-                onclick="comingSoon('Meeting Summaries')"
-            >
+    AI Insights
+</a>
 
-                <svg
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-
-                    <path
-                        d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
-                    />
-
-                    <path d="M8 8h8M8 12h8M8 16h5"/>
-
-                </svg>
-
-                Summaries
-
-            </div>
-
-
-            <div
-                class="nav-item"
-                onclick="comingSoon('AI Insights')"
-            >
-
-                <svg
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-
-                    <path
-                        d="M12 3l1.8 4.6L18 9.5l-4.2 2.4L12 16l-1.8-4.1L6 9.5l4.2-1.9L12 3z"
-                    />
-
-                </svg>
-
-                AI Insights
-
-            </div>
 
         </div>
 
 
+
+        <!-- SIDEBAR BOTTOM -->
+
         <div class="sidebar-bottom">
 
 
-            <div
+            <!-- PROFILE -->
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
                 class="nav-item"
-                onclick="comingSoon('Profile')"
+                onclick="comingSoon(
+                    'Profile'
+                ); return false;"
             >
 
                 <svg
@@ -1073,8 +1680,11 @@
 
                 Profile
 
-            </div>
+            </a>
 
+
+
+            <!-- SIGN OUT -->
 
             <a
                 href="{{ url_for('logout') }}"
@@ -1087,11 +1697,17 @@
                     stroke="currentColor"
                 >
 
-                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                    <path
+                        d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"
+                    />
 
-                    <path d="M16 17l5-5-5-5"/>
+                    <path
+                        d="M16 17l5-5-5-5"
+                    />
 
-                    <path d="M21 12H9"/>
+                    <path
+                        d="M21 12H9"
+                    />
 
                 </svg>
 
@@ -1099,9 +1715,25 @@
 
             </a>
 
+
         </div>
 
+
     </aside>
+
+
+
+    <!-- ================= OPEN SIDEBAR BUTTON ================= -->
+
+    <button
+        type="button"
+        class="sidebar-open"
+        onclick="openSidebar()"
+        aria-label="Open sidebar"
+    >
+        ☰
+    </button>
+
 
 
     <!-- ================= MAIN ================= -->
@@ -1109,100 +1741,294 @@
     <main class="main">
 
 
-        <!-- TOP BAR -->
+        <!-- ================= TOPBAR ================= -->
 
         <div class="topbar">
 
+
             <div class="page-heading">
+
 
                 <h2>
                     Participant Dashboard
                 </h2>
 
+
                 <p>
                     Join meetings, track participation and explore intelligent insights.
                 </p>
 
+
             </div>
+
 
 
             <div class="topbar-right">
 
-                <div class="notification">
 
-                    <svg
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                <!-- NOTIFICATION BELL -->
+
+                <div class="notification-wrapper">
+
+
+                    <button
+                        type="button"
+                        class="notification"
+                        onclick="toggleNotifications()"
+                        aria-label="Notifications"
                     >
 
-                        <path
-                            d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
-                        />
 
-                        <path d="M10 21h4"/>
+                        <svg
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
 
-                    </svg>
+                            <path
+                                d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"
+                            />
+
+                            <path
+                                d="M10 21h4"
+                            />
+
+                        </svg>
+
+
+
+                        {% if unread_notifications > 0 %}
+
+                            <span class="notification-badge">
+
+                                {{ unread_notifications }}
+
+                            </span>
+
+                        {% endif %}
+
+
+                    </button>
+
+
+
+                    <!-- NOTIFICATION DROPDOWN -->
+
+                    <div
+                        class="notification-panel"
+                        id="notificationPanel"
+                    >
+
+
+                        <div
+                            class="notification-panel-header"
+                        >
+
+                            <strong>
+                                Notifications
+                            </strong>
+
+
+                            <span>
+
+                                {{ unread_notifications }}
+                                unread
+
+                            </span>
+
+                        </div>
+
+
+
+                        {% if notifications %}
+
+
+                            {% for notification in notifications %}
+
+
+                                <a
+                                    href="#"
+                                    class="notification-entry"
+                                    onclick="openNotification(
+                                        event,
+                                        '{{ notification._id }}',
+                                        '{{ notification.meeting_id }}'
+                                    )"
+                                >
+
+
+                                    <div
+                                        class="notification-entry-title"
+                                    >
+
+                                        New Meeting Invitation
+
+
+                                        {% if not notification.read %}
+
+                                            <span
+                                                class="notification-unread"
+                                            ></span>
+
+                                        {% endif %}
+
+                                    </div>
+
+
+                                    <div
+                                        class="notification-entry-message"
+                                    >
+
+                                        {{ notification.message }}
+
+                                    </div>
+
+
+                                    <div
+                                        class="notification-entry-meta"
+                                    >
+
+                                        {{ notification.meeting_title }}
+
+                                        ·
+
+                                        {{ notification.meeting_date }}
+
+                                        ·
+
+                                        {{ notification.meeting_time }}
+
+                                    </div>
+
+
+                                </a>
+
+
+                            {% endfor %}
+
+
+                        {% else %}
+
+
+                            <div
+                                class="notification-empty"
+                            >
+
+                                🔔
+
+                                <br><br>
+
+                                No notifications yet.
+
+
+                            </div>
+
+
+                        {% endif %}
+
+
+                    </div>
+
 
                 </div>
 
 
+
+                <!-- PROFILE -->
+
                 <div class="profile">
 
+
                     <div class="avatar">
-                        {{ session.get("user_name", "P")[0] | upper }}
+
+                        {{ session.get(
+                            "user_name",
+                            "P"
+                        )[0] | upper }}
+
                     </div>
+
 
                     <div class="profile-info">
 
+
                         <strong>
-                            {{ session.get("user_name", "Participant") }}
+
+                            {{ session.get(
+                                "user_name",
+                                "Participant"
+                            ) }}
+
                         </strong>
+
 
                         <span>
                             Participant
                         </span>
 
+
                     </div>
+
 
                 </div>
 
+
             </div>
 
+
         </div>
+
 
 
         <!-- ================= WELCOME ================= -->
 
         <section class="welcome">
 
+
             <div class="welcome-content">
 
+
                 <h1>
+
                     Welcome back,
-                    {{ session.get("user_name", "Participant") }}
+
+                    {{ session.get(
+                        "user_name",
+                        "Participant"
+                    ) }}
+
                     👋
+
                 </h1>
 
+
                 <p>
+
                     Stay connected with your meetings,
                     monitor your participation and access
                     AI-powered meeting insights.
+
                 </p>
 
+
                 <a
-                    href="#"
+                    href="{{ url_for('participant_meetings') }}"
                     class="action-button"
-                    onclick="comingSoon('My Meetings')"
                 >
+
                     View My Meetings
+
                 </a>
+
 
             </div>
 
+
             <div class="welcome-glow"></div>
 
+
         </section>
+
 
 
         <!-- ================= STATS ================= -->
@@ -1210,15 +2036,21 @@
         <section class="stats-grid">
 
 
+            <!-- UPCOMING MEETINGS -->
+
             <div class="stat-card">
 
+
                 <div class="stat-top">
+
 
                     <span class="stat-label">
                         Upcoming Meetings
                     </span>
 
+
                     <div class="stat-icon">
+
 
                         <svg
                             fill="none"
@@ -1240,30 +2072,42 @@
 
                         </svg>
 
+
                     </div>
 
+
                 </div>
 
+
                 <div class="stat-value">
-                    0
+                    {{ upcoming_meetings_count | default(0) }}
                 </div>
+
 
                 <div class="stat-change">
                     Scheduled for you
                 </div>
 
+
             </div>
 
 
+
+            <!-- ATTENDANCE -->
+
             <div class="stat-card">
 
+
                 <div class="stat-top">
+
 
                     <span class="stat-label">
                         Attendance
                     </span>
 
+
                     <div class="stat-icon">
+
 
                         <svg
                             fill="none"
@@ -1271,7 +2115,9 @@
                             stroke="currentColor"
                         >
 
-                            <path d="M5 12l4 4L19 6"/>
+                            <path
+                                d="M5 12l4 4L19 6"
+                            />
 
                             <circle
                                 cx="12"
@@ -1281,30 +2127,42 @@
 
                         </svg>
 
+
                     </div>
 
+
                 </div>
+
 
                 <div class="stat-value">
                     0%
                 </div>
 
+
                 <div class="stat-change">
                     Meeting attendance
                 </div>
 
+
             </div>
 
 
+
+            <!-- ENGAGEMENT -->
+
             <div class="stat-card">
 
+
                 <div class="stat-top">
+
 
                     <span class="stat-label">
                         Engagement
                     </span>
 
+
                     <div class="stat-icon">
+
 
                         <svg
                             fill="none"
@@ -1326,30 +2184,42 @@
 
                         </svg>
 
+
                     </div>
 
+
                 </div>
+
 
                 <div class="stat-value">
                     --
                 </div>
 
+
                 <div class="stat-change">
                     AI analysis
                 </div>
 
+
             </div>
 
 
+
+            <!-- AI SUMMARIES -->
+
             <div class="stat-card">
 
+
                 <div class="stat-top">
+
 
                     <span class="stat-label">
                         AI Summaries
                     </span>
 
+
                     <div class="stat-icon">
+
 
                         <svg
                             fill="none"
@@ -1363,33 +2233,44 @@
 
                         </svg>
 
+
                     </div>
 
+
                 </div>
 
+
                 <div class="stat-value">
-                    0
+                    {{ ai_summary_count | default(0) }}
                 </div>
+
 
                 <div class="stat-change">
                     Available summaries
                 </div>
 
+
             </div>
+
 
         </section>
 
 
-        <!-- ================= MEETINGS ================= -->
+
+        <!-- ================= MEETINGS + PARTICIPATION ================= -->
 
         <div class="content-grid">
 
 
+            <!-- UPCOMING MEETINGS -->
+
             <section>
+
 
                 <h3 class="section-title">
                     Upcoming Meetings
                 </h3>
+
 
                 <p class="section-subtitle">
                     Meetings you are invited to attend.
@@ -1398,69 +2279,137 @@
 
                 <div class="panel">
 
+                    {% if meetings %}
 
-                    <div class="meeting-row">
+                        {% for meeting in meetings %}
 
-                        <div class="meeting-left">
+                        <div class="meeting-row">
 
-                            <div class="meeting-icon">
+                            <div class="meeting-left">
 
-                                <svg
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
+                                <div class="meeting-icon">
+                                    <svg
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <rect
+                                            x="3"
+                                            y="5"
+                                            width="18"
+                                            height="14"
+                                            rx="2"
+                                        />
+                                        <path
+                                            d="M8 3v4M16 3v4M3 10h18"
+                                        />
+                                    </svg>
+                                </div>
 
-                                    <rect
-                                        x="3"
-                                        y="5"
-                                        width="18"
-                                        height="14"
-                                        rx="2"
-                                    />
+                                <div>
+                                    <div class="meeting-name">
+                                        {{ meeting.get("title", "MeetIQ Meeting") }}
+                                    </div>
 
-                                    <path
-                                        d="M8 3v4M16 3v4M3 10h18"
-                                    />
-
-                                </svg>
+                                    <div class="meeting-meta">
+                                        {{ meeting.get("formatted_date", meeting.get("date", "Date not set")) }}
+                                        ·
+                                        {{ meeting.get("formatted_time", meeting.get("time", "Time not set")) }}
+                                    </div>
+                                </div>
 
                             </div>
 
+                            <div class="meeting-actions">
 
-                            <div>
-
-                                <div class="meeting-name">
-                                    No upcoming meetings
-                                </div>
-
-                                <div class="meeting-meta">
-                                    Your invited meetings will appear here.
-                                </div>
+                                {% if meeting.get("status", "upcoming") == "live" %}
+                                    <span class="status completed">
+                                        Live
+                                    </span>
+                                    <a
+                                        class="meeting-action live"
+                                        href="{{ url_for('participant_meeting', meeting_id=meeting['_id']) }}"
+                                    >
+                                        Join
+                                    </a>
+                                {% else %}
+                                    <span class="status upcoming">
+                                        Upcoming
+                                    </span>
+                                    <a
+                                        class="meeting-action"
+                                        href="{{ url_for('participant_meeting', meeting_id=meeting['_id']) }}"
+                                    >
+                                        View
+                                    </a>
+                                {% endif %}
 
                             </div>
 
                         </div>
 
+                        {% endfor %}
 
-                        <span class="status upcoming">
-                            Waiting
-                        </span>
+                    {% else %}
 
-                    </div>
+                        <div class="meeting-row">
+
+                            <div class="meeting-left">
+
+                                <div class="meeting-icon">
+                                    <svg
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <rect
+                                            x="3"
+                                            y="5"
+                                            width="18"
+                                            height="14"
+                                            rx="2"
+                                        />
+                                        <path
+                                            d="M8 3v4M16 3v4M3 10h18"
+                                        />
+                                    </svg>
+                                </div>
+
+                                <div>
+                                    <div class="meeting-name">
+                                        No upcoming meetings
+                                    </div>
+                                    <div class="meeting-meta">
+                                        Your invited meetings will appear here.
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <span class="status upcoming">
+                                Waiting
+                            </span>
+
+                        </div>
+
+                    {% endif %}
 
                 </div>
+
 
             </section>
 
 
-            <!-- ================= PARTICIPATION ================= -->
+
+            <!-- PARTICIPATION -->
 
             <section>
+
 
                 <h3 class="section-title">
                     My Participation
                 </h3>
+
 
                 <p class="section-subtitle">
                     Your meeting participation overview.
@@ -1469,33 +2418,49 @@
 
                 <div class="panel">
 
-                    <div style="
-                        text-align:center;
-                        padding:35px 10px;
-                    ">
 
-                        <div style="
-                            font-size:42px;
-                            margin-bottom:10px;
-                        ">
+                    <div
+                        style="
+                            text-align:center;
+                            padding:35px 10px;
+                        "
+                    >
+
+
+                        <div
+                            style="
+                                font-size:42px;
+                                margin-bottom:10px;
+                            "
+                        >
                             📊
                         </div>
 
-                        <div style="
-                            color:#b6bed0;
-                            font-size:14px;
-                        ">
+
+                        <div
+                            style="
+                                color:#b6bed0;
+                                font-size:14px;
+                            "
+                        >
+
                             Participation analytics
                             will appear after you attend meetings.
+
                         </div>
+
 
                     </div>
 
+
                 </div>
+
 
             </section>
 
+
         </div>
+
 
 
         <!-- ================= AI PANEL ================= -->
@@ -1505,7 +2470,9 @@
 
             <div class="ai-header">
 
+
                 <div class="ai-icon">
+
 
                     <svg
                         fill="none"
@@ -1523,14 +2490,19 @@
 
                     </svg>
 
+
                 </div>
 
 
                 <div class="ai-title">
+
                     MeetIQ AI Intelligence
+
                 </div>
 
+
             </div>
+
 
 
             <p class="ai-description">
@@ -1541,72 +2513,99 @@
             </p>
 
 
+
             <div class="ai-features">
 
 
+                <!-- SUMMARY -->
+
                 <div class="ai-feature">
+
 
                     <strong>
                         Meeting Summary
                     </strong>
 
+
                     AI-generated discussion points,
                     decisions and action items.
+
 
                 </div>
 
 
+
+                <!-- ATTENTION -->
+
                 <div class="ai-feature">
+
 
                     <strong>
                         Attention Monitoring
                     </strong>
 
+
                     AI analyzes face visibility,
                     eye direction and head position.
+
 
                 </div>
 
 
+
+                <!-- MODERATION -->
+
                 <div class="ai-feature">
+
 
                     <strong>
                         Smart Moderation
                     </strong>
 
+
                     AI detects potentially toxic or
                     abusive speech and provides moderation alerts.
+
 
                 </div>
 
 
             </div>
 
+
         </section>
+
 
 
         <!-- ================= QUICK ACTIONS ================= -->
 
         <section>
 
+
             <h3 class="section-title">
                 Quick Actions
             </h3>
+
 
             <p class="section-subtitle">
                 Quickly access your MeetIQ features.
             </p>
 
 
+
             <div class="quick-actions">
 
 
-                <div
+                <!-- MY MEETINGS -->
+
+                <a
+                    href="{{ url_for('participant_meetings') }}"
                     class="quick-card"
-                    onclick="comingSoon('My Meetings')"
                 >
 
+
                     <div class="quick-card-icon">
+
 
                         <svg
                             fill="none"
@@ -1628,25 +2627,34 @@
 
                         </svg>
 
+
                     </div>
+
 
                     <strong>
                         My Meetings
                     </strong>
 
+
                     <p>
                         View your invited meetings
                     </p>
 
-                </div>
+
+                </a>
 
 
-                <div
-                    class="quick-card"
-                    onclick="comingSoon('Attendance')"
-                >
+
+                <!-- ATTENDANCE -->
+
+                <a
+    href="{{ url_for('participant_attendance') }}"
+    class="quick-card"
+>
+
 
                     <div class="quick-card-icon">
+
 
                         <svg
                             fill="none"
@@ -1654,7 +2662,9 @@
                             stroke="currentColor"
                         >
 
-                            <path d="M5 12l4 4L19 6"/>
+                            <path
+                                d="M5 12l4 4L19 6"
+                            />
 
                             <circle
                                 cx="12"
@@ -1664,25 +2674,38 @@
 
                         </svg>
 
+
                     </div>
+
 
                     <strong>
                         Attendance
                     </strong>
 
+
                     <p>
                         Check your attendance
                     </p>
 
+
                 </div>
 
 
+
+                <!-- AI SUMMARIES -->
+
                 <div
                     class="quick-card"
-                    onclick="comingSoon('Meeting Summaries')"
+                    onclick="
+                        comingSoon(
+                            'Meeting Summaries'
+                        )
+                    "
                 >
 
+
                     <div class="quick-card-icon">
+
 
                         <svg
                             fill="none"
@@ -1694,29 +2717,42 @@
                                 d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
                             />
 
-                            <path d="M8 8h8M8 12h8M8 16h5"/>
+                            <path
+                                d="M8 8h8M8 12h8M8 16h5"
+                            />
 
                         </svg>
 
+
                     </div>
+
 
                     <strong>
                         AI Summaries
                     </strong>
 
+
                     <p>
                         Read meeting summaries
                     </p>
 
+
                 </div>
 
 
+
+                <!-- PROFILE -->
+
                 <div
                     class="quick-card"
-                    onclick="comingSoon('Profile')"
+                    onclick="
+                        comingSoon('Profile')
+                    "
                 >
 
+
                     <div class="quick-card-icon">
+
 
                         <svg
                             fill="none"
@@ -1736,43 +2772,133 @@
 
                         </svg>
 
+
                     </div>
+
 
                     <strong>
                         My Profile
                     </strong>
 
+
                     <p>
                         View your participant profile
                     </p>
+
 
                 </div>
 
 
             </div>
 
+
         </section>
 
 
     </main>
 
+
 </div>
+
 
 
 <script>
 
+    /* ================= COMING SOON ================= */
+
     function comingSoon(feature) {
-
-        alert(
-            feature +
-            " module will be connected next in MeetIQ."
-        );
-
+        alert(feature + " module will be connected next in MeetIQ.");
     }
 
+
+    /* ================= SIDEBAR ================= */
+
+    function closeSidebar() {
+        document.body.classList.add("sidebar-closed");
+    }
+
+    function openSidebar() {
+        document.body.classList.remove("sidebar-closed");
+    }
+
+
+    /* ================= NOTIFICATIONS ================= */
+
+    function toggleNotifications() {
+        const panel = document.getElementById("notificationPanel");
+
+        if (!panel) {
+            return;
+        }
+
+        panel.classList.toggle("show");
+    }
+
+
+    /* ================= OPEN NOTIFICATION ================= */
+
+    async function openNotification(event, notificationId, meetingId) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        try {
+            // Mark this specific notification as read.
+            await fetch(
+                "/api/participant/notifications/" +
+                encodeURIComponent(notificationId) +
+                "/read",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    keepalive: true
+                }
+            );
+        } catch (error) {
+            console.error("Could not mark notification as read:", error);
+        }
+
+        // Update the badge immediately before opening the meeting.
+        const badge = document.querySelector(".notification-badge");
+
+        if (badge) {
+            const currentCount = parseInt(
+                badge.textContent.trim(),
+                10
+            ) || 0;
+
+            const newCount = Math.max(0, currentCount - 1);
+
+            if (newCount === 0) {
+                badge.remove();
+            } else {
+                badge.textContent = newCount;
+            }
+        }
+
+        // Open the selected meeting.
+        window.location.href =
+            "/participant/meetings/" +
+            encodeURIComponent(meetingId);
+    }
+
+
+    /* ================= CLOSE NOTIFICATIONS OUTSIDE ================= */
+
+    document.addEventListener("click", function(event) {
+        const wrapper = document.querySelector(".notification-wrapper");
+        const panel = document.getElementById("notificationPanel");
+
+        if (!wrapper || !panel) {
+            return;
+        }
+
+        if (!wrapper.contains(event.target)) {
+            panel.classList.remove("show");
+        }
+    });
+
 </script>
-
-
 </body>
-
 </html>

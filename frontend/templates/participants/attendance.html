@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeetIQ | Attendance</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Inter, Arial, sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(91,76,255,.18), transparent 30%),
+                radial-gradient(circle at 90% 20%, rgba(0,200,255,.12), transparent 30%),
+                #080b16;
+            color: #f5f7ff;
+            min-height: 100vh;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 255px;
+            background: rgba(13,17,32,.96);
+            border-right: 1px solid rgba(255,255,255,.08);
+            padding: 25px 18px;
+            position: fixed;
+            inset: 0 auto 0 0;
+        }
+
+        .brand {
+            padding: 0 10px 30px;
+            font-size: 23px;
+            font-weight: 800;
+        }
+
+        .brand span {
+            color: #7c74ff;
+        }
+
+        .nav-title {
+            color: #71798f;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            padding: 0 12px;
+            margin: 15px 0 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            padding: 13px;
+            border-radius: 11px;
+            margin-bottom: 5px;
+            color: #9da5ba;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            color: white;
+            background: rgba(108,99,255,.14);
+        }
+
+        .main {
+            margin-left: 255px;
+            width: calc(100% - 255px);
+            padding: 35px;
+        }
+
+        .heading h1 {
+            font-size: 30px;
+            margin-bottom: 7px;
+        }
+
+        .heading p {
+            color: #8e98ae;
+        }
+
+        .summary {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(180px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            background: rgba(17,23,37,.88);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 16px;
+            padding: 22px;
+        }
+
+        .label {
+            color: #8e98ae;
+            font-size: 13px;
+        }
+
+        .value {
+            margin-top: 10px;
+            font-size: 30px;
+            font-weight: 800;
+        }
+
+        .green {
+            color: #35f0a2;
+        }
+
+        .table-card {
+            margin-top: 25px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px 14px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+
+        th {
+            color: #8e98ae;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .7px;
+        }
+
+        td {
+            color: #e8ebf5;
+            font-size: 13px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+        }
+
+        .attended {
+            background: rgba(53,240,162,.12);
+            color: #35f0a2;
+        }
+
+        .not-attended {
+            background: rgba(255,101,119,.10);
+            color: #ff8795;
+        }
+
+        .empty {
+            padding: 45px 20px;
+            text-align: center;
+            color: #7f899f;
+        }
+
+        @media (max-width: 850px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                width: 100%;
+                padding: 22px;
+            }
+
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                min-width: 600px;
+            }
+
+            .table-card {
+                overflow-x: auto;
+            }
+        }
+    </style>
+<style>
+/* ===== MeetIQ DASHBOARD SIDEBAR — SHARED STYLE ===== */
+.sidebar {
+    width: 255px;
+    background: rgba(13, 17, 32, 0.96);
+    border-right: 1px solid rgba(255,255,255,0.08);
+    padding: 25px 18px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    transition: transform 0.3s ease;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 10px 30px;
+}
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #6c63ff, #00c6ff);
+    box-shadow: 0 8px 30px rgba(108,99,255,0.35);
+}
+.brand-icon svg { width: 23px; height: 23px; }
+.brand-name { font-size: 23px; font-weight: 800; }
+.brand-name span { color: #7c74ff; }
+.sidebar-close {
+    position: absolute;
+    top: 22px;
+    right: 18px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    color: #b6bfd2;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 110;
+    transition: 0.2s;
+}
+.sidebar-close:hover { background: rgba(108,99,255,0.20); color: white; }
+.nav-section { margin-top: 15px; }
+.nav-title {
+    color: #71798f;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    padding: 0 12px;
+    margin-bottom: 10px;
+}
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 13px;
+    border-radius: 11px;
+    margin-bottom: 5px;
+    color: #9da5ba;
+    cursor: pointer;
+    transition: 0.25s;
+    font-size: 15px;
+}
+.nav-item:hover, .nav-item.active {
+    color: white;
+    background: rgba(108,99,255,0.14);
+}
+.nav-item.active { border-left: 3px solid #7c74ff; }
+.nav-item svg { width: 19px; height: 19px; flex-shrink: 0; }
+.sidebar-bottom {
+    position: absolute;
+    bottom: 22px;
+    left: 18px;
+    right: 18px;
+}
+@media (max-width: 800px) {
+    .sidebar { width: 210px; }
+    .main { margin-left: 210px; width: calc(100% - 210px); padding: 20px; }
+}
+@media (max-width: 600px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; width: 100%; }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+
+
+        <!-- CLOSE SIDEBAR -->
+
+        <button
+            type="button"
+            class="sidebar-close"
+            onclick="closeSidebar()"
+            aria-label="Close sidebar"
+        >
+            ×
+        </button>
+
+
+        <!-- BRAND -->
+
+        <div class="brand">
+
+
+            <div class="brand-icon">
+
+                <svg
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+
+                    <path
+                        stroke-width="2"
+                        d="M8 7V5a4 4 0 018 0v2"
+                    />
+
+                    <rect
+                        x="4"
+                        y="7"
+                        width="16"
+                        height="13"
+                        rx="2"
+                        stroke-width="2"
+                    />
+
+                    <path
+                        stroke-width="2"
+                        d="M9 12h6M12 9v6"
+                    />
+
+                </svg>
+
+            </div>
+
+
+            <div class="brand-name">
+
+                Meet<span>IQ</span>
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- WORKSPACE -->
+
+        <div class="nav-section">
+
+
+            <div class="nav-title">
+                Workspace
+            </div>
+
+
+            <!-- DASHBOARD -->
+
+            <a
+                href="{{ url_for('participant_dashboard') }}"
+                class="nav-item"
+            >
+
+                <svg
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+
+                    <rect
+                        x="4"
+                        y="4"
+                        width="6"
+                        height="6"
+                        rx="1"
+                    />
+
+                    <rect
+                        x="14"
+                        y="4"
+                        width="6"
+                        height="6"
+                        rx="1"
+                    />
+
+                    <rect
+                        x="4"
+                        y="14"
+                        width="6"
+                        height="6"
+                        rx="1"
+                    />
+
+                    <rect
+                        x="14"
+                        y="14"
+                        width="6"
+                        height="6"
+                        rx="1"
+                    />
+
+                </svg>
+
+                Dashboard
+
+            </a>
+
+
+
+            <!-- MY MEETINGS -->
+
+            <a
+                href="{{ url_for('participant_meetings') }}"
+                class="nav-item"
+            >
+
+                <svg
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+
+                    <rect
+                        x="3"
+                        y="5"
+                        width="18"
+                        height="14"
+                        rx="2"
+                    />
+
+                    <path
+                        d="M8 3v4M16 3v4M3 10h18"
+                    />
+
+                </svg>
+
+                My Meetings
+
+            </a>
+
+
+
+            <!-- ATTENDANCE -->
+            <a href="{{ url_for('participant_attendance') }}" class="nav-item active">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M5 12l4 4L19 6"/>
+                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                </svg> class="nav-item"</a>
+
+
+        </div>
+
+
+
+        <!-- AI & INSIGHTS -->
+
+        <div class="nav-section">
+
+
+            <div class="nav-title">
+                AI & Insights
+            </div>
+<!-- AI INSIGHTS -->
+
+           <a
+    href="{{ url_for('participant_insights') }}"
+    class="nav-item"
+>
+    <svg
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+    >
+        <path
+            d="M9 19V6l3-3 3 3v13"
+        />
+        <path
+            d="M5 19h14"
+        />
+        <path
+            d="M6 15h3M15 12h3M6 11h3"
+        />
+    </svg>
+
+    AI Insights
+</a>
+
+
+        </div>
+
+
+
+        <!-- SIDEBAR BOTTOM -->
+
+        <div class="sidebar-bottom">
+
+
+            <!-- PROFILE -->
+            <a href="{{ url_for('participant_dashboard') }}" class="nav-item">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 21a8 8 0 0116 0"/>
+                </svg>
+                Profile
+            </a>
+
+
+
+            <!-- SIGN OUT -->
+
+            <a
+                href="{{ url_for('logout') }}"
+                class="nav-item"
+            >
+
+                <svg
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+
+                    <path
+                        d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"
+                    />
+
+                    <path
+                        d="M16 17l5-5-5-5"
+                    />
+
+                    <path
+                        d="M21 12H9"
+                    />
+
+                </svg>
+
+                Sign Out
+
+            </a>
+
+
+        </div>
+
+
+    </aside>
+
+    <main class="main">
+
+        <section class="heading">
+            <h1>Attendance</h1>
+            <p>Track how many meetings you attended.</p>
+        </section>
+
+        <section class="summary">
+
+            <div class="card">
+                <div class="label">Attendance</div>
+                <div class="value green">
+                    {{ attended_meetings }} / {{ eligible_meetings }}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="label">Attendance Percentage</div>
+                <div class="value">
+                    {{ attendance_percentage }}%
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="label">Meetings Attended</div>
+                <div class="value">
+                    {{ attended_meetings }}
+                </div>
+            </div>
+
+        </section>
+
+        <section class="card table-card">
+
+            {% if attendance_rows %}
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Meeting</th>
+                        <th>Date</th>
+                        <th>Attendance</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                {% for row in attendance_rows %}
+
+                    <tr>
+
+                        <td>
+                            {{ row.meeting.get("title", "Meeting") }}
+                        </td>
+
+                        <td>
+                            {{ row.meeting.get(
+                                "formatted_date",
+                                row.meeting.get("date", "—")
+                            ) }}
+                        </td>
+
+                        <td>
+
+                            {% if row.session_count > 0 %}
+
+                                <span class="status attended">
+                                    Attended
+                                </span>
+
+                            {% else %}
+
+                                <span class="status not-attended">
+                                    Not Attended
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+            </table>
+
+            {% else %}
+
+                <div class="empty">
+                    No completed meetings yet.
+                </div>
+
+            {% endif %}
+
+        </section>
+
+    </main>
+</div>
+
+<script>
+function closeSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) sidebar.style.transform = 'translateX(-100%)';
+}
+</script>
+</body>
+</html>

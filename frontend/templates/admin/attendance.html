@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeetIQ | Admin Attendance</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Inter, Arial, sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(91,76,255,.18), transparent 30%),
+                radial-gradient(circle at 90% 20%, rgba(0,200,255,.12), transparent 30%),
+                #080b16;
+            color: #f5f7ff;
+            min-height: 100vh;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 245px;
+            background: rgba(10,15,29,.94);
+            border-right: 1px solid rgba(255,255,255,.07);
+            padding: 25px 16px;
+            position: fixed;
+            inset: 0 auto 0 0;
+        }
+
+        .brand {
+            padding: 0 10px 30px;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .brand span {
+            color: #7c74ff;
+        }
+
+        .nav-label {
+            color: #626d88;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 0 12px 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 13px;
+            margin-bottom: 5px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #8e98b1;
+            font-size: 13px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            color: white;
+            background: rgba(103,83,255,.14);
+        }
+
+        .main {
+            margin-left: 245px;
+            width: calc(100% - 245px);
+            padding: 38px 42px 60px;
+        }
+
+        .header h1 {
+            font-size: 30px;
+            margin-bottom: 7px;
+        }
+
+        .header p {
+            color: #7f8aa5;
+            font-size: 13px;
+        }
+
+        .meeting {
+            margin-top: 25px;
+            background: rgba(13,19,34,.82);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .meeting-header {
+            padding: 20px 22px;
+            border-bottom: 1px solid rgba(255,255,255,.06);
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .meeting-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .meeting-meta {
+            color: #7d88a1;
+            font-size: 11px;
+            margin-top: 7px;
+        }
+
+        .meeting-count {
+            color: #8e98ae;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,.05);
+        }
+
+        th {
+            color: #7f8aa5;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+        }
+
+        td {
+            color: #e9edf7;
+            font-size: 12px;
+        }
+
+        .muted {
+            color: #707b94;
+        }
+
+        .attended {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: rgba(53,240,162,.12);
+            color: #35f0a2;
+            font-size: 10px;
+        }
+
+        .absent {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: rgba(255,101,119,.10);
+            color: #ff8795;
+            font-size: 10px;
+        }
+
+        .empty {
+            padding: 55px;
+            text-align: center;
+            color: #7f899f;
+        }
+
+        @media (max-width: 800px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                width: 100%;
+                padding: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            Meet<span>IQ</span>
+        </div>
+
+        <div class="nav-label">Workspace</div>
+
+        <a class="nav-item" href="{{ url_for('admin_dashboard') }}">
+            ⌂ Dashboard
+        </a>
+
+        <a class="nav-item" href="{{ url_for('admin_meetings') }}">
+            ◫ Meetings
+        </a>
+
+        <a class="nav-item active" href="{{ url_for('admin_attendance') }}">
+            ✓ Attendance
+        </a>
+
+        <div class="nav-label" style="margin-top:20px;">
+            Account
+        </div>
+
+        <a class="nav-item" href="{{ url_for('logout') }}">
+            → Sign Out
+        </a>
+
+    </aside>
+
+    <main class="main">
+
+        <section class="header">
+            <h1>Attendance</h1>
+            <p>
+                Detailed participant attendance for your meetings.
+            </p>
+        </section>
+
+        {% if attendance_meetings %}
+
+            {% for item in attendance_meetings %}
+
+                <section class="meeting">
+
+                    <div class="meeting-header">
+
+                        <div>
+                            <div class="meeting-title">
+                                {{ item.meeting.get("title", "Meeting") }}
+                            </div>
+
+                            <div class="meeting-meta">
+                                {{ item.meeting.get(
+                                    "formatted_date",
+                                    item.meeting.get("date", "—")
+                                ) }}
+                                ·
+                                {{ item.meeting.get(
+                                    "formatted_time",
+                                    item.meeting.get("time", "—")
+                                ) }}
+                                ·
+                                Duration:
+                                {{ item.meeting.get("duration", "—") }}
+                            </div>
+                        </div>
+
+                        <div class="meeting-count">
+                            {{ item.attended_count }}
+                            / {{ item.invited_count }}
+                            attended
+                        </div>
+
+                    </div>
+
+                    <div class="table-wrap">
+
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Participant</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>First Join</th>
+                                    <th>Last Leave</th>
+                                    <th>Total Time</th>
+                                    <th>Sessions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                            {% for participant in item.participants %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ participant.participant_name }}
+                                    </td>
+
+                                    <td>
+                                        {{ participant.participant_email or "—" }}
+                                    </td>
+
+                                    <td>
+
+                                        {% if participant.attended %}
+
+                                            <span class="attended">
+                                                Attended
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="absent">
+                                                Not Attended
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
+
+                                    <td>
+                                        {% if participant.first_join %}
+                                            {{ participant.first_join.strftime(
+                                                "%d %b %Y, %I:%M:%S %p"
+                                            ) }}
+                                        {% else %}
+                                            <span class="muted">—</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if participant.last_leave %}
+                                            {{ participant.last_leave.strftime(
+                                                "%d %b %Y, %I:%M:%S %p"
+                                            ) }}
+                                        {% else %}
+                                            <span class="muted">—</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {% if participant.total_seconds > 0 %}
+                                            {{ participant.total_seconds // 60 }}m
+                                            {{ participant.total_seconds % 60 }}s
+                                        {% else %}
+                                            <span class="muted">—</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>
+                                        {{ participant.session_count }}
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </section>
+
+            {% endfor %}
+
+        {% else %}
+
+            <div class="meeting">
+                <div class="empty">
+                    No meetings have attendance records yet.
+                </div>
+            </div>
+
+        {% endif %}
+
+    </main>
+
+</div>
+
+</body>
+</html>

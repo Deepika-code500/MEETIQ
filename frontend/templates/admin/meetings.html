@@ -310,15 +310,20 @@
         /* =================================================
            MAIN CONTENT
         ================================================= */
+.main {
 
-        .main {
+    margin-left: 292px;
 
-            margin-left: 245px;
+    width: calc(100% - 292px);
 
-            min-height: 100vh;
+    min-height: 100vh;
 
-            padding: 38px 42px 60px;
-        }
+    padding: 38px 42px 60px;
+
+    transition:
+        margin-left 0.3s ease,
+        width 0.3s ease;
+}
 
 
         .topbar {
@@ -1079,6 +1084,36 @@
                 white-space: normal;
             }
         }
+        /* ================= ADMIN SIDEBAR OPEN / CLOSED ================= */
+
+body.admin-sidebar-closed .main {
+
+    margin-left: 0 !important;
+
+    width: 100% !important;
+}
+
+
+body:not(.admin-sidebar-closed) .main {
+
+    margin-left: 292px !important;
+
+    width: calc(100% - 292px) !important;
+}
+
+
+/* ================= MOBILE ================= */
+
+@media (max-width: 650px) {
+
+    body:not(.admin-sidebar-closed) .main {
+
+        margin-left: 0 !important;
+
+        width: 100% !important;
+    }
+
+}
 
     </style>
 
