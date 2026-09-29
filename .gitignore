@@ -17,3 +17,4 @@ __pycache__/
 Thumbs.db
 # Speech-to-text recordings
 ai-services/speech-to-text/recordings/
+.pytest_cache/

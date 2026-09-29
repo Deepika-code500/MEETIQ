@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeetIQ | Admin AI Insights</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(91,76,255,.18), transparent 35%),
+                radial-gradient(circle at 90% 20%, rgba(0,200,255,.12), transparent 35%),
+                #080b16;
+            color: #f5f7ff;
+            min-height: 100vh;
+        }
+
+        .main-content {
+            padding: 38px 42px 60px;
+            transition: all 0.3s ease;
+        }
+
+        /* HEADER */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .page-header p {
+            color: #7f8aa5;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .filter-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(13, 19, 34, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            padding: 8px 16px;
+            border-radius: 12px;
+        }
+
+        .filter-control label {
+            font-size: 13px;
+            color: #8e98b1;
+            font-weight: 500;
+        }
+
+        .filter-control select {
+            background: #0f1629;
+            color: #f5f7ff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+            max-width: 250px;
+        }
+
+        /* KPI GRID */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 36px;
+        }
+
+        .kpi-card {
+            background: rgba(13, 19, 34, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 22px 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .kpi-title {
+            color: #7f8aa5;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        .kpi-subtitle {
+            font-size: 12px;
+            color: #626d88;
+            margin-top: 6px;
+        }
+
+        .text-purple { color: #8c82ff; }
+        .text-cyan { color: #00c8ff; }
+        .text-green { color: #00e6a5; }
+        .text-yellow { color: #ffb800; }
+        .text-coral { color: #ff6b8b; }
+
+        /* SECTION CARD */
+        .section-card {
+            background: rgba(13, 19, 34, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        .section-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .disclaimer-badge {
+            background: rgba(124, 116, 255, 0.12);
+            color: #9a91ff;
+            border: 1px solid rgba(124, 116, 255, 0.25);
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        /* LIST & TABLE */
+        .item-list {
+            padding: 16px 24px;
+        }
+
+        .item-row {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            border-radius: 8px;
+            transition: background 0.15s ease;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .item-content {
+            flex: 1;
+        }
+
+        .item-text {
+            font-size: 14px;
+            color: #e2e8f5;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        .item-meta {
+            font-size: 12px;
+            color: #626d88;
+            margin-top: 4px;
+        }
+
+        .owner-badge {
+            background: rgba(0, 200, 255, 0.12);
+            color: #00c8ff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* TABLE */
+        .data-table-container {
+            overflow-x: auto;
+        }
+
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        table.data-table th {
+            background: rgba(10, 15, 29, 0.6);
+            color: #626d88;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 14px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        table.data-table td {
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #d1d7e6;
+        }
+
+        .empty-state {
+            padding: 48px;
+            text-align: center;
+            color: #626d88;
+        }
+
+        .empty-state-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+    {% include "admin/_sidebar.html" %}
+
+    <div class="main-content">
+        
+        <!-- HEADER -->
+        <div class="page-header">
+            <div>
+                <h1>AI Insights & Signal Analytics</h1>
+                <p>Extracted meeting intelligence, decision summaries, and measured AI model signals</p>
+            </div>
+
+            <form method="GET" action="{{ url_for('admin_ai_insights') }}" class="filter-control">
+                <label for="meeting_id">Filter Meeting:</label>
+                <select name="meeting_id" id="meeting_id" onchange="this.form.submit()">
+                    <option value="">All Meetings</option>
+                    {% for m in insights.admin_meetings_list %}
+                        <option value="{{ m.id }}" {% if insights.selected_meeting_id == m.id %}selected{% endif %}>
+                            {{ m.title }} ({{ m.date }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <!-- KPI GRID -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>AI Summaries</span>
+                    <span class="text-purple">✦</span>
+                </div>
+                <div class="kpi-value">{{ insights.meetings_with_summary }}</div>
+                <div class="kpi-subtitle">Out of {{ insights.total_meetings }} meetings</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>Action Items</span>
+                    <span class="text-cyan">☑</span>
+                </div>
+                <div class="kpi-value text-cyan">{{ insights.total_action_items }}</div>
+                <div class="kpi-subtitle">Extracted tasks</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>Decisions Made</span>
+                    <span class="text-green">⚡</span>
+                </div>
+                <div class="kpi-value text-green">{{ insights.total_decisions }}</div>
+                <div class="kpi-subtitle">Key resolutions</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>Discussion Points</span>
+                    <span class="text-yellow">💬</span>
+                </div>
+                <div class="kpi-value">{{ insights.total_discussion_points }}</div>
+                <div class="kpi-subtitle">Highlighted topics</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>Moderation Events</span>
+                    <span class="text-coral">🛡</span>
+                </div>
+                <div class="kpi-value text-coral">{{ insights.moderation_summary.total_events }}</div>
+                <div class="kpi-subtitle">Measured model signals</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>Attention Alerts</span>
+                    <span class="text-yellow">👁</span>
+                </div>
+                <div class="kpi-value">{{ insights.attention_summary.total_alerts }}</div>
+                <div class="kpi-subtitle">Video tracking signals</div>
+            </div>
+        </div>
+
+        <!-- ACTION ITEMS -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Action Items Extracted</h2>
+                <span class="disclaimer-badge">Ollama / AI Extracted Tasks</span>
+            </div>
+
+            {% if insights.action_items %}
+            <div class="item-list">
+                {% for item in insights.action_items %}
+                <div class="item-row">
+                    <div class="item-content">
+                        <div class="item-text">☑ {{ item.task }}</div>
+                        <div class="item-meta">Meeting: <strong>{{ item.meeting_title }}</strong> ({{ item.date }})</div>
+                    </div>
+                    <div>
+                        <span class="owner-badge">Owner: {{ item.owner }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <h3>No action items recorded</h3>
+                <p>No action items have been generated or extracted yet for the selected meetings.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- DECISIONS MADE -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Decisions Made</h2>
+                <span class="disclaimer-badge">Key Resolutions</span>
+            </div>
+
+            {% if insights.decisions %}
+            <div class="item-list">
+                {% for item in insights.decisions %}
+                <div class="item-row">
+                    <div class="item-content">
+                        <div class="item-text" style="color: #00e6a5;">⚡ {{ item.decision }}</div>
+                        <div class="item-meta">Meeting: <strong>{{ item.meeting_title }}</strong> ({{ item.date }})</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">⚡</div>
+                <h3>No decisions recorded</h3>
+                <p>No decision summaries are available for the selected meeting filter.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- DISCUSSION POINTS -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Key Discussion Points</h2>
+                <span class="disclaimer-badge">Meeting Topics</span>
+            </div>
+
+            {% if insights.discussion_points %}
+            <div class="item-list">
+                {% for item in insights.discussion_points %}
+                <div class="item-row">
+                    <div class="item-content">
+                        <div class="item-text">💬 {{ item.point }}</div>
+                        <div class="item-meta">Meeting: <strong>{{ item.meeting_title }}</strong> ({{ item.date }})</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">💬</div>
+                <h3>No discussion points recorded</h3>
+                <p>No discussion points extracted yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- MODERATION SIGNALS -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Moderation Signals</h2>
+                <span class="disclaimer-badge">AI / Model-Generated Signals (Measured Toxicity Output)</span>
+            </div>
+
+            <div style="padding: 16px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; gap: 24px; font-size: 13px; color: #8e98b1;">
+                <div>Total Measured Events: <strong style="color: #ffffff;">{{ insights.moderation_summary.total_events }}</strong></div>
+                <div>Meetings with Events: <strong style="color: #ffffff;">{{ insights.moderation_summary.meetings_with_moderation }}</strong></div>
+                <div>Avg Toxicity Score: <strong style="color: #00c8ff;">{{ insights.moderation_summary.avg_toxicity_score }}</strong></div>
+                <div>Highest Toxicity Score: <strong style="color: #ff6b8b;">{{ insights.moderation_summary.highest_toxicity_score }}</strong></div>
+            </div>
+
+            {% if insights.moderation_summary.events %}
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Meeting</th>
+                            <th>Participant ID</th>
+                            <th>Toxicity Score</th>
+                            <th>Action</th>
+                            <th>Message</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ev in insights.moderation_summary.events %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ ev.meeting_title }}</td>
+                            <td>{{ ev.participant_id }}</td>
+                            <td style="color: #ff6b8b; font-weight: 600;">{{ ev.toxicity_score }}</td>
+                            <td>{{ ev.action }}</td>
+                            <td style="font-size: 13px; color: #a0aec0;">{{ ev.message }}</td>
+                            <td>{{ ev.timestamp }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">🛡</div>
+                <h3>No moderation events recorded</h3>
+                <p>No toxicity moderation events detected for the selected meeting filter.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ATTENTION SIGNALS -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>Attention Signals</h2>
+                <span class="disclaimer-badge">Video-Processing Attention Monitoring Signals</span>
+            </div>
+
+            <div style="padding: 16px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; gap: 24px; font-size: 13px; color: #8e98b1;">
+                <div>Avg Attention Score: <strong style="color: #00e6a5;">{{ insights.attention_summary.avg_attention_score }}%</strong></div>
+                <div>Meetings Monitored: <strong style="color: #ffffff;">{{ insights.attention_summary.meetings_with_attention }}</strong></div>
+                <div>Monitored Participants: <strong style="color: #ffffff;">{{ insights.attention_summary.monitored_participants }}</strong></div>
+                <div>Total Alerts: <strong style="color: #ffb800;">{{ insights.attention_summary.total_alerts }}</strong></div>
+            </div>
+
+            {% if insights.attention_summary.signals %}
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Meeting</th>
+                            <th>Participant</th>
+                            <th>Score</th>
+                            <th>Status Signal</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for att in insights.attention_summary.signals %}
+                        <tr>
+                            <td style="font-weight: 600;">{{ att.meeting_title }}</td>
+                            <td>{{ att.participant_name }}</td>
+                            <td style="font-weight: 600;" class="text-cyan">{{ att.score }}%</td>
+                            <td>{{ att.status }}</td>
+                            <td>{{ att.time }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">👁</div>
+                <h3>No attention signals recorded</h3>
+                <p>No attention monitoring alerts recorded for the selected meeting filter.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+</body>
+</html>

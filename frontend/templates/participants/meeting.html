@@ -825,6 +825,38 @@ let stableAttentionScore = 100;
 let attentionChangeCount = 0;
 let warningVisible = false;
 let lastAttentionAlert = 0;
+
+let attendanceJoined = false;
+let attendanceLeaving = false;
+
+async function recordAttendanceJoin() {
+    if (attendanceJoined) return;
+    try {
+        const response = await fetch("/api/attendance/" + meetingId + "/join", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            attendanceJoined = true;
+            console.log("MeetIQ: Attendance JOIN recorded successfully.", data);
+        } else {
+            console.error("MeetIQ: Attendance JOIN response error:", data);
+        }
+    } catch (error) {
+        console.error("MeetIQ: Attendance JOIN network error:", error);
+    }
+}
+
+window.addEventListener("pagehide", function() {
+    if (attendanceJoined && !attendanceLeaving) {
+        attendanceLeaving = true;
+        navigator.sendBeacon("/api/attendance/" + meetingId + "/leave");
+    }
+});
+
 socket.on("connect", function() {
 
     console.log(
@@ -1332,6 +1364,8 @@ async function joinMeeting() {
             meeting_id: meetingId
         });
 
+        await recordAttendanceJoin();
+
         // REAL-TIME AUDIO MODERATION
         // One complete WebM recording at a time.
         // Stop -> upload -> wait for response -> start next recording.
@@ -1602,7 +1636,36 @@ function toggleMicrophone() {
 ========================= */
 
 async function leaveMeeting() {
+    if (attendanceLeaving) {
+        console.log("MeetIQ: Leave meeting already in progress.");
+        return;
+    }
+    attendanceLeaving = true;
     console.log("MeetIQ: Leaving meeting...");
+
+    const leaveBtn = document.querySelector(".leave-btn");
+    if (leaveBtn) {
+        leaveBtn.disabled = true;
+        leaveBtn.textContent = "Leaving...";
+    }
+
+    try {
+        await fetch("/api/attendance/" + meetingId + "/leave", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+        console.log("MeetIQ: Attendance LEAVE API recorded.");
+    } catch (error) {
+        console.error("MeetIQ: Attendance LEAVE API error:", error);
+    }
+
+    if (socket) {
+        socket.emit("leave_meeting", {
+            meeting_id: meetingId
+        });
+    }
 
     leavingMeeting = true;
 

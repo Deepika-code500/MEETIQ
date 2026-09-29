@@ -347,8 +347,8 @@
 
         <!-- ANALYTICS -->
         <a
-            href="#"
-            onclick="return false;"
+            href="{{ url_for('admin_analytics') }}"
+            class="{% if request.endpoint == 'admin_analytics' %}active{% endif %}"
         >
             <span class="admin-sidebar-icon">◉</span>
             <span>Analytics</span>
@@ -357,8 +357,8 @@
 
         <!-- AI INSIGHTS -->
         <a
-            href="#"
-            onclick="return false;"
+            href="{{ url_for('admin_ai_insights') }}"
+            class="{% if request.endpoint == 'admin_ai_insights' %}active{% endif %}"
         >
             <span class="admin-sidebar-icon">✦</span>
             <span>AI Insights</span>

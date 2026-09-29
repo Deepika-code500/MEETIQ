@@ -4,21 +4,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MONGODB_URI = os.getenv("MONGODB_URI")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/meetiq")
 
-if not MONGODB_URI:
-    raise ValueError("MONGODB_URI is not set in .env")
-
-client = MongoClient(MONGODB_URI)
+client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=2000)
+db = client["meetiq"]
 
 try:
     client.admin.command("ping")
     print("MongoDB connected successfully!")
-
-    db = client["meetiq"]
-
     print("Database selected: meetiq")
-
 except Exception as error:
     print("MongoDB connection failed:")
     print(error)

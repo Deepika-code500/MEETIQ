@@ -8,7 +8,10 @@ from flask_mail import Message
 import os
 import uuid
 import sys
-import whisper
+try:
+    import whisper
+except ImportError:
+    whisper = None
 from pathlib import Path
 from werkzeug.utils import secure_filename
 from models.user_model import (
@@ -58,6 +61,8 @@ socketio = SocketIO(
     cors_allowed_origins="*"
 )
 socket_users = {}
+socket_meeting_rooms = {}
+
 @socketio.on("connect")
 def handle_socket_connect():
 
@@ -78,6 +83,14 @@ def handle_socket_connect():
 def handle_socket_disconnect():
 
     disconnected_socket = request.sid
+
+    info = socket_meeting_rooms.pop(disconnected_socket, None)
+    if info and info.get("role") == "participant":
+        m_id = info.get("meeting_id")
+        p_id = info.get("participant_id")
+        if m_id and p_id:
+            print("Finalizing attendance on socket disconnect:", p_id, m_id)
+            finalize_attendance_session(m_id, p_id, datetime.utcnow())
 
     for user_id, socket_id in list(
         socket_users.items()
@@ -1441,10 +1454,385 @@ def admin_attendance():
             "attended_count": attended_count
         })
 
-    return render_template(
-        "admin/attendance.html",
-        attendance_meetings=attendance_meetings
+# =========================================================
+# ADMIN ANALYTICS & AI INSIGHTS HELPERS AND ROUTES
+# =========================================================
+
+def compute_admin_analytics(admin_email, time_range="all"):
+    """
+    Calculate real admin analytics metrics based on meetings created by admin_email.
+    Supports time_range filtering: 'all', 'today', '7days', '30days'.
+    """
+    from bson.objectid import ObjectId
+
+    now = datetime.utcnow()
+    query = {"created_by_email": admin_email}
+
+    meetings = list(meetings_collection.find(query).sort([("date", -1), ("time", -1)]))
+
+    if time_range != "all":
+        filtered = []
+        for m in meetings:
+            m_date_str = m.get("date")
+            m_ended = m.get("ended_at")
+            m_dt = None
+
+            if isinstance(m_ended, datetime):
+                m_dt = m_ended
+            elif m_date_str:
+                try:
+                    m_dt = datetime.strptime(m_date_str, "%Y-%m-%d")
+                except ValueError:
+                    pass
+
+            if m_dt:
+                delta_days = (now - m_dt).days
+                if time_range == "today" and (delta_days == 0 or m_date_str == now.strftime("%Y-%m-%d")):
+                    filtered.append(m)
+                elif time_range == "7days" and delta_days <= 7:
+                    filtered.append(m)
+                elif time_range == "30days" and delta_days <= 30:
+                    filtered.append(m)
+            else:
+                filtered.append(m)
+        meetings = filtered
+
+    total_meetings = len(meetings)
+    completed_meetings = [m for m in meetings if m.get("status") == "completed"]
+    live_meetings = [m for m in meetings if m.get("status") == "live"]
+    upcoming_meetings = [m for m in meetings if m.get("status") == "upcoming"]
+
+    all_invited = set()
+    for m in meetings:
+        all_invited.update(m.get("invited_participants", []))
+    total_participants = len(all_invited)
+
+    all_attendance_sessions = []
+    unique_attended_participants = set()
+    total_invited_count = 0
+    total_actual_attended_count = 0
+
+    meeting_analytics = []
+
+    for m in meetings:
+        invited_list = m.get("invited_participants", [])
+        expected_count = len(invited_list)
+        total_invited_count += expected_count
+
+        attendance_records = m.get("attendance", [])
+        m_attended_participants = set(
+            rec.get("participant_id")
+            for rec in attendance_records
+            if rec.get("participant_id")
+        )
+        actual_count = len(m_attended_participants)
+        total_actual_attended_count += actual_count
+        unique_attended_participants.update(m_attended_participants)
+
+        meeting_duration_sec = 0
+        ended_at = m.get("ended_at")
+        started_at = m.get("started_at")
+        if isinstance(ended_at, datetime) and isinstance(started_at, datetime):
+            meeting_duration_sec = max(0, int((ended_at - started_at).total_seconds()))
+        else:
+            if attendance_records:
+                session_durations = [
+                    int(rec.get("duration_seconds", 0) or 0)
+                    for rec in attendance_records
+                ]
+                meeting_duration_sec = max(session_durations, default=0)
+
+        m_session_durations = [
+            int(rec.get("duration_seconds", 0) or 0)
+            for rec in attendance_records
+            if rec.get("leave_time") or rec.get("duration_seconds")
+        ]
+        avg_participant_dur_sec = (
+            sum(m_session_durations) / len(m_session_durations)
+            if m_session_durations else 0
+        )
+
+        all_attendance_sessions.extend(attendance_records)
+
+        m_attendance_rate = (
+            round((actual_count / expected_count) * 100, 1)
+            if expected_count > 0 else 0.0
+        )
+
+        meeting_analytics.append({
+            "meeting_id": str(m.get("_id")),
+            "title": m.get("title") or m.get("topic") or "Untitled Meeting",
+            "date": m.get("date", "N/A"),
+            "time": m.get("time", "N/A"),
+            "status": m.get("status", "upcoming"),
+            "duration_seconds": meeting_duration_sec,
+            "duration_minutes": round(meeting_duration_sec / 60.0, 1),
+            "expected_participants": expected_count,
+            "actual_participants": actual_count,
+            "attendance_rate": m_attendance_rate,
+            "avg_participant_duration_minutes": round(avg_participant_dur_sec / 60.0, 1),
+            "summary_available": bool(m.get("ai_summary"))
+        })
+
+    completed_durations = [
+        ma["duration_seconds"]
+        for ma in meeting_analytics
+        if ma["status"] == "completed" and ma["duration_seconds"] > 0
+    ]
+    avg_meeting_duration_sec = (
+        sum(completed_durations) / len(completed_durations)
+        if completed_durations else 0
     )
+
+    closed_sessions = [
+        rec for rec in all_attendance_sessions
+        if rec.get("leave_time") or rec.get("status") == "completed"
+    ]
+    session_durations = [
+        int(rec.get("duration_seconds", 0) or 0)
+        for rec in closed_sessions
+    ]
+    avg_attendance_duration_sec = (
+        sum(session_durations) / len(session_durations)
+        if session_durations else 0
+    )
+    max_session_duration_sec = max(session_durations, default=0)
+    min_session_duration_sec = min(session_durations, default=0) if session_durations else 0
+
+    overall_attendance_rate = (
+        round((total_actual_attended_count / total_invited_count) * 100, 1)
+        if total_invited_count > 0 else 0.0
+    )
+
+    return {
+        "time_range": time_range,
+        "total_meetings": total_meetings,
+        "completed_meetings": len(completed_meetings),
+        "live_meetings": len(live_meetings),
+        "upcoming_meetings": len(upcoming_meetings),
+        "total_participants": total_participants,
+        "unique_attended_participants": len(unique_attended_participants),
+        "avg_meeting_duration_minutes": round(avg_meeting_duration_sec / 60.0, 1),
+        "avg_attendance_duration_minutes": round(avg_attendance_duration_sec / 60.0, 1),
+        "overall_attendance_rate": overall_attendance_rate,
+        "total_attendance_sessions": len(all_attendance_sessions),
+        "closed_attendance_sessions": len(closed_sessions),
+        "max_session_duration_minutes": round(max_session_duration_sec / 60.0, 1),
+        "min_session_duration_minutes": round(min_session_duration_sec / 60.0, 1),
+        "meeting_analytics": meeting_analytics
+    }
+
+
+def compute_admin_ai_insights(admin_email, selected_meeting_id=None):
+    """
+    Aggregate AI summaries, discussion points, decisions, action items,
+    moderation toxicity events, and attention signals for admin's meetings.
+    """
+    from bson.objectid import ObjectId
+
+    query = {"created_by_email": admin_email}
+    if selected_meeting_id:
+        try:
+            query["_id"] = ObjectId(selected_meeting_id)
+        except Exception:
+            pass
+
+    meetings = list(meetings_collection.find(query).sort([("date", -1), ("time", -1)]))
+
+    discussion_points = []
+    decisions = []
+    action_items = []
+    moderation_events = []
+    attention_signals = []
+
+    meetings_with_summary_count = 0
+    total_meetings = len(meetings)
+
+    for m in meetings:
+        m_id_str = str(m.get("_id"))
+        m_title = m.get("title") or m.get("topic") or "Untitled Meeting"
+        m_date = m.get("date", "N/A")
+
+        ai_summary = m.get("ai_summary")
+        if ai_summary and isinstance(ai_summary, dict):
+            meetings_with_summary_count += 1
+
+            for dp in ai_summary.get("discussion_points", []):
+                if isinstance(dp, str) and dp.strip():
+                    discussion_points.append({
+                        "meeting_id": m_id_str,
+                        "meeting_title": m_title,
+                        "date": m_date,
+                        "point": dp.strip()
+                    })
+
+            for dec in ai_summary.get("decisions", []):
+                if isinstance(dec, str) and dec.strip():
+                    decisions.append({
+                        "meeting_id": m_id_str,
+                        "meeting_title": m_title,
+                        "date": m_date,
+                        "decision": dec.strip()
+                    })
+
+            for act in ai_summary.get("action_items", []):
+                if isinstance(act, dict):
+                    action_items.append({
+                        "meeting_id": m_id_str,
+                        "meeting_title": m_title,
+                        "date": m_date,
+                        "task": act.get("task") or act.get("action", "N/A"),
+                        "owner": act.get("owner") or act.get("assignee") or "Unassigned"
+                    })
+                elif isinstance(act, str) and act.strip():
+                    action_items.append({
+                        "meeting_id": m_id_str,
+                        "meeting_title": m_title,
+                        "date": m_date,
+                        "task": act.strip(),
+                        "owner": "Unassigned"
+                    })
+
+        for te in m.get("toxicity_events", []):
+            if isinstance(te, dict):
+                score = float(te.get("toxicity_score", 0) or 0)
+                ts = te.get("timestamp")
+                ts_str = ts.isoformat() if isinstance(ts, datetime) else str(ts or "")
+                moderation_events.append({
+                    "meeting_id": m_id_str,
+                    "meeting_title": m_title,
+                    "date": m_date,
+                    "participant_id": te.get("participant_id", "Unknown"),
+                    "toxicity_score": round(score, 3),
+                    "action": te.get("action", "flagged"),
+                    "message": te.get("message", "Measured model signal"),
+                    "timestamp": ts_str
+                })
+
+        for att in m.get("attention_alerts", []):
+            if isinstance(att, dict):
+                attention_signals.append({
+                    "meeting_id": m_id_str,
+                    "meeting_title": m_title,
+                    "date": m_date,
+                    "participant_id": att.get("participant_id", "Unknown"),
+                    "participant_name": att.get("participant_name") or att.get("participant_id", "Participant"),
+                    "score": att.get("score", 0),
+                    "status": att.get("status", "Signal Monitored"),
+                    "time": att.get("time", "")
+                })
+
+    mod_scores = [ev["toxicity_score"] for ev in moderation_events]
+    avg_toxicity_score = round(sum(mod_scores) / len(mod_scores), 3) if mod_scores else 0.0
+    highest_toxicity_score = round(max(mod_scores, default=0.0), 3)
+    meetings_with_moderation_count = len(set(ev["meeting_id"] for ev in moderation_events))
+
+    att_scores = [att["score"] for att in attention_signals]
+    avg_attention_score = round(sum(att_scores) / len(att_scores), 1) if att_scores else 100.0
+    meetings_with_attention_count = len(set(att["meeting_id"] for att in attention_signals))
+    monitored_participants_count = len(set(att["participant_id"] for att in attention_signals))
+
+    all_admin_meetings = list(meetings_collection.find({"created_by_email": admin_email}).sort([("date", -1)]))
+
+    return {
+        "selected_meeting_id": selected_meeting_id,
+        "total_meetings": total_meetings,
+        "meetings_with_summary": meetings_with_summary_count,
+        "total_discussion_points": len(discussion_points),
+        "total_decisions": len(decisions),
+        "total_action_items": len(action_items),
+        "discussion_points": discussion_points,
+        "decisions": decisions,
+        "action_items": action_items,
+        "moderation_summary": {
+            "total_events": len(moderation_events),
+            "meetings_with_moderation": meetings_with_moderation_count,
+            "avg_toxicity_score": avg_toxicity_score,
+            "highest_toxicity_score": highest_toxicity_score,
+            "events": moderation_events
+        },
+        "attention_summary": {
+            "avg_attention_score": avg_attention_score,
+            "meetings_with_attention": meetings_with_attention_count,
+            "monitored_participants": monitored_participants_count,
+            "total_alerts": len(attention_signals),
+            "signals": attention_signals
+        },
+        "admin_meetings_list": [
+            {
+                "id": str(m["_id"]),
+                "title": m.get("title") or m.get("topic") or "Untitled Meeting",
+                "date": m.get("date", "")
+            }
+            for m in all_admin_meetings
+        ]
+    }
+
+
+@app.route("/admin/analytics")
+def admin_analytics():
+    if session.get("role") != "admin":
+        flash("Please sign in as an administrator.", "error")
+        return redirect(url_for("admin_login"))
+
+    time_range = request.args.get("time_range", "all")
+    admin_email = session.get("user_id")
+
+    analytics_data = compute_admin_analytics(admin_email, time_range=time_range)
+
+    return render_template(
+        "admin/analytics.html",
+        analytics=analytics_data
+    )
+
+
+@app.route("/admin/ai-insights")
+def admin_ai_insights():
+    if session.get("role") != "admin":
+        flash("Please sign in as an administrator.", "error")
+        return redirect(url_for("admin_login"))
+
+    meeting_id = request.args.get("meeting_id")
+    admin_email = session.get("user_id")
+
+    insights_data = compute_admin_ai_insights(admin_email, selected_meeting_id=meeting_id)
+
+    return render_template(
+        "admin/ai_insights.html",
+        insights=insights_data
+    )
+
+
+@app.route("/api/admin/analytics")
+def api_admin_analytics():
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    time_range = request.args.get("time_range", "all")
+    admin_email = session.get("user_id")
+
+    analytics_data = compute_admin_analytics(admin_email, time_range=time_range)
+
+    return jsonify({
+        "success": True,
+        "analytics": analytics_data
+    })
+
+
+@app.route("/api/admin/ai-insights")
+def api_admin_ai_insights():
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    meeting_id = request.args.get("meeting_id")
+    admin_email = session.get("user_id")
+
+    insights_data = compute_admin_ai_insights(admin_email, selected_meeting_id=meeting_id)
+
+    return jsonify({
+        "success": True,
+        "insights": insights_data
+    })
 
 
 @app.route("/admin/participants")
@@ -1535,8 +1923,8 @@ def parse_duration_minutes(duration_value):
 
 def finalize_attendance_session(meeting_id, participant_id, end_time=None):
     """
-    Close the latest open attendance session for a participant.
-    Returns True when an open session was finalized.
+    Close open attendance session(s) for a participant.
+    Returns tuple (finalized_bool, duration_seconds).
     """
     from bson.objectid import ObjectId
 
@@ -1546,14 +1934,14 @@ def finalize_attendance_session(meeting_id, participant_id, end_time=None):
     try:
         meeting_object_id = ObjectId(meeting_id)
     except Exception:
-        return False
+        return False, 0
 
     meeting = meetings_collection.find_one({
         "_id": meeting_object_id
     })
 
     if not meeting:
-        return False
+        return False, 0
 
     attendance = meeting.get("attendance", [])
 
@@ -1567,37 +1955,45 @@ def finalize_attendance_session(meeting_id, participant_id, end_time=None):
     ]
 
     if not open_indexes:
-        return False
+        return False, 0
 
-    target_index = open_indexes[-1]
-    target = attendance[target_index]
+    finalized = False
+    last_duration = 0
 
-    join_time = target.get("join_time")
+    for target_index in open_indexes:
+        target = attendance[target_index]
+        join_time = target.get("join_time")
 
-    if not isinstance(join_time, datetime):
-        join_time = end_time
+        if isinstance(join_time, str):
+            try:
+                join_time = datetime.fromisoformat(join_time)
+            except Exception:
+                join_time = end_time
+        elif not isinstance(join_time, datetime):
+            join_time = end_time
 
-    duration_seconds = max(
-        0,
-        int((end_time - join_time).total_seconds())
-    )
+        duration_seconds = max(
+            0,
+            int((end_time - join_time).total_seconds())
+        )
+        last_duration = duration_seconds
 
-    meetings_collection.update_one(
-        {"_id": meeting_object_id},
-        {
-            "$set": {
-                f"attendance.{target_index}.leave_time": end_time,
-                f"attendance.{target_index}.duration_seconds": duration_seconds,
-                f"attendance.{target_index}.duration_minutes": round(
-                    duration_seconds / 60.0,
-                    2
-                ),
-                f"attendance.{target_index}.status": "completed"
-            }
-        }
-    )
+        target["leave_time"] = end_time
+        target["duration_seconds"] = duration_seconds
+        target["duration_minutes"] = round(
+            duration_seconds / 60.0,
+            2
+        )
+        target["status"] = "completed"
+        finalized = True
 
-    return True
+    if finalized:
+        meetings_collection.update_one(
+            {"_id": meeting_object_id},
+            {"$set": {"attendance": attendance}}
+        )
+
+    return True, last_duration
 
 
 def finalize_meeting_attendance(meeting_id, end_time=None):
@@ -1634,7 +2030,12 @@ def finalize_meeting_attendance(meeting_id, end_time=None):
 
         join_time = record.get("join_time")
 
-        if not isinstance(join_time, datetime):
+        if isinstance(join_time, str):
+            try:
+                join_time = datetime.fromisoformat(join_time)
+            except Exception:
+                join_time = end_time
+        elif not isinstance(join_time, datetime):
             join_time = end_time
 
         duration_seconds = max(
@@ -1947,19 +2348,25 @@ def attendance_join(meeting_id):
     except Exception:
         return jsonify({
             "success": False,
-            "message": "Invalid meeting ID."
-        }), 400
+            "message": "Meeting not found."
+        }), 404
 
     meeting = meetings_collection.find_one({
-        "_id": meeting_object_id,
-        "invited_participants": participant_id
+        "_id": meeting_object_id
     })
 
     if not meeting:
         return jsonify({
             "success": False,
-            "message": "Meeting not found or you are not authorized."
+            "message": "Meeting not found."
         }), 404
+
+    invited_participants = meeting.get("invited_participants", [])
+    if participant_id not in invited_participants:
+        return jsonify({
+            "success": False,
+            "message": "Participant not authorized or invited to this meeting."
+        }), 403
 
     if meeting.get("status") != "live":
         return jsonify({
@@ -1982,12 +2389,14 @@ def attendance_join(meeting_id):
     )
 
     if open_session:
+        join_t = open_session.get("join_time")
+        join_t_str = join_t.isoformat() if isinstance(join_t, datetime) else str(join_t)
         return jsonify({
             "success": True,
             "already_recorded": True,
             "session_id": open_session.get("session_id"),
-            "join_time": open_session.get("join_time")
-        })
+            "join_time": join_t_str
+        }), 200
 
     join_time = datetime.utcnow()
     session_id = str(uuid.uuid4())
@@ -2006,7 +2415,6 @@ def attendance_join(meeting_id):
     meetings_collection.update_one(
         {
             "_id": meeting_object_id,
-            "invited_participants": participant_id,
             "status": "live"
         },
         {
@@ -2028,7 +2436,7 @@ def attendance_join(meeting_id):
         "already_recorded": False,
         "session_id": session_id,
         "join_time": join_time.isoformat()
-    })
+    }), 200
 
 
 # =========================================================
@@ -2044,9 +2452,26 @@ def attendance_leave(meeting_id):
             "message": "Unauthorized"
         }), 401
 
+    from bson.objectid import ObjectId
+
+    try:
+        meeting_object_id = ObjectId(meeting_id)
+    except Exception:
+        return jsonify({
+            "success": False,
+            "message": "Meeting not found."
+        }), 404
+
+    meeting = meetings_collection.find_one({"_id": meeting_object_id})
+    if not meeting:
+        return jsonify({
+            "success": False,
+            "message": "Meeting not found."
+        }), 404
+
     participant_id = session.get("user_id")
 
-    finalized = finalize_attendance_session(
+    finalized, duration_seconds = finalize_attendance_session(
         meeting_id,
         participant_id,
         datetime.utcnow()
@@ -2056,13 +2481,15 @@ def attendance_leave(meeting_id):
         "ATTENDANCE LEAVE:",
         participant_id,
         meeting_id,
-        finalized
+        finalized,
+        duration_seconds
     )
 
     return jsonify({
         "success": True,
-        "recorded": finalized
-    })
+        "recorded": bool(finalized),
+        "duration_seconds": duration_seconds
+    }), 200
 
 
 @app.route("/participant/meetings")
@@ -2550,6 +2977,14 @@ def handle_join_meeting(data):
 
     participant_id = session.get("user_id")
     participant_name = session.get("user_name")
+    role = session.get("role")
+
+    if request.sid and meeting_id:
+        socket_meeting_rooms[request.sid] = {
+            "meeting_id": str(meeting_id),
+            "participant_id": participant_id,
+            "role": role
+        }
 
     emit(
         "participant_joined",
@@ -2658,6 +3093,13 @@ def handle_leave_meeting(data):
 
     leave_room(room)
 
+    if request.sid in socket_meeting_rooms:
+        socket_meeting_rooms.pop(request.sid, None)
+
+    participant_id = session.get("user_id")
+    if session.get("role") == "participant" and participant_id:
+        finalize_attendance_session(meeting_id, participant_id, datetime.utcnow())
+
     emit(
         "participant_left",
         {
@@ -2710,12 +3152,14 @@ whisper_path = (
 if str(whisper_path) not in sys.path:
     sys.path.insert(0, str(whisper_path))
 
-import speech_to_text
-
-# Reuse the Whisper model already loaded by speech_to_text.py.
-model = speech_to_text.model
-
-print("MeetIQ: Whisper module connected (shared model).")
+try:
+    import speech_to_text
+    model = getattr(speech_to_text, "model", None)
+    print("MeetIQ: Whisper module connected (shared model).")
+except (ImportError, Exception) as e:
+    speech_to_text = None
+    model = None
+    print("MeetIQ: Whisper module not available:", e)
 # ============================================================
 # =========================================================
 # AI MEETING SUMMARY
@@ -2816,13 +3260,18 @@ toxicity_path = (
 if str(toxicity_path) not in sys.path:
     sys.path.insert(0, str(toxicity_path))
 
-from toxicity_detector import (
-    detect_text_toxicity,
-    analyze_voice,
-    moderation_decision
-)
-
-print("MeetIQ: Toxicity detection module connected.")
+try:
+    from toxicity_detector import (
+        detect_text_toxicity,
+        analyze_voice,
+        moderation_decision
+    )
+    print("MeetIQ: Toxicity detection module connected.")
+except (ImportError, Exception) as e:
+    detect_text_toxicity = None
+    analyze_voice = None
+    moderation_decision = None
+    print("MeetIQ: Toxicity detection module not available:", e)
 @app.route("/api/meeting-summary/<meeting_id>", methods=["POST"])
 def create_meeting_summary(meeting_id):
     """Generate the AI summary from Whisper transcript segments."""
