@@ -1,20 +1,24 @@
 # Python virtual environment
+venv/
+.venv/
 backend/venv/
 
 # Environment variables and secrets
+.env
+*.env
 backend/.env
 
-# Python cache
+# Python cache & pytest
 __pycache__/
 *.pyc
+.pytest_cache/
 
-# IDE files
+# Speech-to-text recordings
+recordings/
+ai-services/speech-to-text/recordings/
+
+# IDE files & OS files
 .vscode/
 .idea/
-
-# OS files
 .DS_Store
 Thumbs.db
-# Speech-to-text recordings
-ai-services/speech-to-text/recordings/
-.pytest_cache/

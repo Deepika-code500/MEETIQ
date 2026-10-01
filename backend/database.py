@@ -16,3 +16,15 @@ try:
 except Exception as error:
     print("MongoDB connection failed:")
     print(error)
+
+def init_indexes():
+    try:
+        db.admins.create_index("email", unique=True)
+        db.participants.create_index("email", unique=True)
+        db.meetings.create_index("created_by_email")
+        db.meetings.create_index("status")
+        db.attendance.create_index([("meeting_id", 1), ("participant_id", 1)])
+    except Exception as e:
+        print("MongoDB index creation warning:", e)
+
+init_indexes()

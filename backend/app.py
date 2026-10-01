@@ -10,7 +10,7 @@ import uuid
 import sys
 try:
     import whisper
-except ImportError:
+except Exception:
     whisper = None
 from pathlib import Path
 from werkzeug.utils import secure_filename
@@ -56,32 +56,45 @@ app = Flask(
     static_url_path="/static"
 )
 
+cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()] if cors_origins_env != "*" else "*"
+
 socketio = SocketIO(
     app,
-    cors_allowed_origins="*"
+    cors_allowed_origins=cors_origins
 )
 socket_users = {}
 socket_meeting_rooms = {}
 
+# =========================================================
+# SECRET KEY & SECURITY CONFIGURATION
+# =========================================================
+
+app.secret_key = os.getenv("SECRET_KEY", "meetiq-development-secret-key")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+if os.getenv("FLASK_ENV") == "production":
+    app.config["SESSION_COOKIE_SECURE"] = True
+
+app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
+app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
+app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "True") == "True"
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER")
+
+mail = Mail(app)
+
 @socketio.on("connect")
 def handle_socket_connect():
-
     user_id = session.get("user_id")
-
     if user_id:
-
         socket_users[user_id] = request.sid
-
-        print(
-            "Socket connected:",
-            user_id,
-            request.sid
-        )
+        print("Socket connected:", user_id, request.sid)
 
 
 @socketio.on("disconnect")
 def handle_socket_disconnect():
-
     disconnected_socket = request.sid
 
     info = socket_meeting_rooms.pop(disconnected_socket, None)
@@ -92,33 +105,11 @@ def handle_socket_disconnect():
             print("Finalizing attendance on socket disconnect:", p_id, m_id)
             finalize_attendance_session(m_id, p_id, datetime.utcnow())
 
-    for user_id, socket_id in list(
-        socket_users.items()
-    ):
-
+    for user_id, socket_id in list(socket_users.items()):
         if socket_id == disconnected_socket:
-
             del socket_users[user_id]
-
-            print(
-                "Socket disconnected:",
-                user_id
-            )
-
+            print("Socket disconnected:", user_id)
             break
-# =========================================================
-# SECRET KEY
-# =========================================================
-
-app.secret_key = "meetiq-development-secret-key"
-app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
-app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
-app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "True") == "True"
-app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
-app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
-app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER")
-
-mail = Mail(app)
 
 # =========================================================
 # TEMPORARY USER STORAGE
@@ -1468,7 +1459,11 @@ def compute_admin_analytics(admin_email, time_range="all"):
     now = datetime.utcnow()
     query = {"created_by_email": admin_email}
 
-    meetings = list(meetings_collection.find(query).sort([("date", -1), ("time", -1)]))
+    try:
+        meetings = list(meetings_collection.find(query).sort([("date", -1), ("time", -1)]))
+    except Exception as error:
+        print("MeetIQ DB Error in compute_admin_analytics:", error)
+        meetings = []
 
     if time_range != "all":
         filtered = []
@@ -1637,7 +1632,11 @@ def compute_admin_ai_insights(admin_email, selected_meeting_id=None):
         except Exception:
             pass
 
-    meetings = list(meetings_collection.find(query).sort([("date", -1), ("time", -1)]))
+    try:
+        meetings = list(meetings_collection.find(query).sort([("date", -1), ("time", -1)]))
+    except Exception as error:
+        print("MeetIQ DB Error in compute_admin_ai_insights:", error)
+        meetings = []
 
     discussion_points = []
     decisions = []
@@ -2979,8 +2978,9 @@ def handle_join_meeting(data):
     participant_name = session.get("user_name")
     role = session.get("role")
 
-    if request.sid and meeting_id:
-        socket_meeting_rooms[request.sid] = {
+    sid = getattr(request, "sid", None)
+    if sid and meeting_id:
+        socket_meeting_rooms[sid] = {
             "meeting_id": str(meeting_id),
             "participant_id": participant_id,
             "role": role
@@ -2997,6 +2997,40 @@ def handle_join_meeting(data):
         include_self=False
     )
 
+def validate_same_meeting_sockets(meeting_id, target_id):
+    """
+    Verify that current socket and target participant belong to the same meeting.
+    Returns target_socket_id if valid, else None.
+    """
+    if not meeting_id or not target_id:
+        return None
+
+    sid = getattr(request, "sid", None)
+    if not sid or not isinstance(sid, str):
+        try:
+            curr_obj = request._get_current_object()
+            sid = getattr(curr_obj, "sid", None)
+        except Exception:
+            sid = None
+
+    if not sid or not isinstance(sid, str):
+        return None
+
+    sender_info = socket_meeting_rooms.get(sid)
+    if not sender_info or sender_info.get("meeting_id") != str(meeting_id):
+        return None
+
+    target_socket_id = socket_users.get(target_id)
+    if not target_socket_id:
+        return None
+
+    target_info = socket_meeting_rooms.get(target_socket_id)
+    if not target_info or target_info.get("meeting_id") != str(meeting_id):
+        return None
+
+    return target_socket_id
+
+
 @socketio.on("webrtc_offer")
 def handle_webrtc_offer(data):
 
@@ -3007,11 +3041,11 @@ def handle_webrtc_offer(data):
     if not meeting_id or not target_id or not offer:
         return
 
-    target_socket_id = socket_users.get(target_id)
+    target_socket_id = validate_same_meeting_sockets(meeting_id, target_id)
 
     if not target_socket_id:
         print(
-            "Target participant is not connected:",
+            "Blocked cross-meeting/invalid WebRTC offer:",
             target_id
         )
         return
@@ -3025,6 +3059,7 @@ def handle_webrtc_offer(data):
         to=target_socket_id
     )
 
+
 @socketio.on("webrtc_ice_candidate")
 def handle_webrtc_ice_candidate(data):
 
@@ -3035,11 +3070,11 @@ def handle_webrtc_ice_candidate(data):
     if not meeting_id or not target_id or not candidate:
         return
 
-    target_socket_id = socket_users.get(target_id)
+    target_socket_id = validate_same_meeting_sockets(meeting_id, target_id)
 
     if not target_socket_id:
         print(
-            "Target user is not connected:",
+            "Blocked cross-meeting/invalid ICE candidate:",
             target_id
         )
         return
@@ -3064,11 +3099,11 @@ def handle_webrtc_answer(data):
     if not meeting_id or not target_id or not answer:
         return
 
-    target_socket_id = socket_users.get(target_id)
+    target_socket_id = validate_same_meeting_sockets(meeting_id, target_id)
 
     if not target_socket_id:
         print(
-            "Target user is not connected:",
+            "Blocked cross-meeting/invalid WebRTC answer:",
             target_id
         )
         return
@@ -3081,6 +3116,8 @@ def handle_webrtc_answer(data):
         },
         to=target_socket_id
     )
+
+
 @socketio.on("leave_meeting")
 def handle_leave_meeting(data):
 
@@ -3093,8 +3130,9 @@ def handle_leave_meeting(data):
 
     leave_room(room)
 
-    if request.sid in socket_meeting_rooms:
-        socket_meeting_rooms.pop(request.sid, None)
+    sid = getattr(request, "sid", None)
+    if sid and sid in socket_meeting_rooms:
+        socket_meeting_rooms.pop(sid, None)
 
     participant_id = session.get("user_id")
     if session.get("role") == "participant" and participant_id:
@@ -3108,6 +3146,8 @@ def handle_leave_meeting(data):
         room=room,
         include_self=False
     )
+
+
 @socketio.on("send_chat_message")
 def handle_chat_message(data):
 
@@ -3117,13 +3157,19 @@ def handle_chat_message(data):
     if not meeting_id or not message:
         return
 
-    message = message.strip()
+    sid = getattr(request, "sid", None)
+    sender_info = socket_meeting_rooms.get(sid) if sid else None
+    if not sender_info or sender_info.get("meeting_id") != str(meeting_id):
+        print("Blocked chat message from non-room socket.")
+        return
+
+    message = str(message).strip()[:1000]
 
     if not message:
         return
 
     user_id = session.get("user_id")
-    user_name = session.get("user_name")
+    user_name = session.get("user_name", "User")
 
     if not user_id:
         return
@@ -3676,5 +3722,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=5000,
         debug=True,
-    
+        allow_unsafe_werkzeug=True
     )
