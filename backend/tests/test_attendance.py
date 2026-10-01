@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from bson.objectid import ObjectId
 import mongomock
 
@@ -143,7 +143,7 @@ def test_duplicate_join_does_not_create_duplicate_active_sessions(client, mock_d
 def test_participant_can_leave_and_calculates_duration(client, mock_db):
     meetings_col = mock_db["meetings"]
     meeting_id = str(ObjectId())
-    join_time = datetime.utcnow() - timedelta(seconds=120)
+    join_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=120)
 
     meetings_col.insert_one({
         "_id": ObjectId(meeting_id),
@@ -180,8 +180,8 @@ def test_participant_can_leave_and_calculates_duration(client, mock_db):
 def test_duplicate_leave_is_safely_handled(client, mock_db):
     meetings_col = mock_db["meetings"]
     meeting_id = str(ObjectId())
-    join_time = datetime.utcnow() - timedelta(seconds=60)
-    leave_time = datetime.utcnow() - timedelta(seconds=10)
+    join_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=60)
+    leave_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=10)
 
     meetings_col.insert_one({
         "_id": ObjectId(meeting_id),
@@ -217,7 +217,7 @@ def test_duplicate_leave_is_safely_handled(client, mock_db):
 def test_admin_ending_meeting_closes_active_attendance_sessions(client, mock_db):
     meetings_col = mock_db["meetings"]
     meeting_id = str(ObjectId())
-    join_time = datetime.utcnow() - timedelta(seconds=300)
+    join_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=300)
 
     meetings_col.insert_one({
         "_id": ObjectId(meeting_id),
@@ -244,7 +244,7 @@ def test_admin_ending_meeting_closes_active_attendance_sessions(client, mock_db)
         ]
     })
 
-    ended_at = datetime.utcnow()
+    ended_at = datetime.now(timezone.utc).replace(tzinfo=None)
     finalized_count = finalize_meeting_attendance(meeting_id, ended_at)
 
     assert finalized_count == 2

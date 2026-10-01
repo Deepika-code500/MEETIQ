@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from bson.objectid import ObjectId
 import mongomock
 
@@ -102,8 +102,8 @@ def test_non_admin_cannot_retrieve_analytics(client, mock_db):
 
 def test_attendance_and_meeting_duration_statistics(client, mock_db):
     meetings_col = mock_db["meetings"]
-    start_time = datetime.utcnow() - timedelta(minutes=30)
-    end_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=30)
+    end_time = datetime.now(timezone.utc).replace(tzinfo=None)
 
     meetings_col.insert_one({
         "_id": ObjectId(),
@@ -167,7 +167,7 @@ def test_moderation_aggregation_works(client, mock_db):
                 "toxicity_score": 0.85,
                 "action": "warning",
                 "message": "Measured model toxicity signal",
-                "timestamp": datetime.utcnow()
+                "timestamp": datetime.now(timezone.utc).replace(tzinfo=None)
             }
         ]
     })

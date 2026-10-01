@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from flask_mail import Mail
 from flask_mail import Message
@@ -103,7 +103,7 @@ def handle_socket_disconnect():
         p_id = info.get("participant_id")
         if m_id and p_id:
             print("Finalizing attendance on socket disconnect:", p_id, m_id)
-            finalize_attendance_session(m_id, p_id, datetime.utcnow())
+            finalize_attendance_session(m_id, p_id, get_utc_now())
 
     for user_id, socket_id in list(socket_users.items()):
         if socket_id == disconnected_socket:
@@ -125,6 +125,10 @@ meetings = []
 # =========================================================
 # HELPER FUNCTIONS
 # =========================================================
+
+def get_utc_now():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 def find_admin(email):
     email = email.strip().lower()
@@ -1011,7 +1015,7 @@ def end_meeting(meeting_id):
             )
         )
 
-    meeting_ended_at = datetime.utcnow()
+    meeting_ended_at = get_utc_now()
 
     meetings_collection.update_one(
         {
@@ -1456,7 +1460,7 @@ def compute_admin_analytics(admin_email, time_range="all"):
     """
     from bson.objectid import ObjectId
 
-    now = datetime.utcnow()
+    now = get_utc_now()
     query = {"created_by_email": admin_email}
 
     try:
@@ -1928,7 +1932,7 @@ def finalize_attendance_session(meeting_id, participant_id, end_time=None):
     from bson.objectid import ObjectId
 
     if end_time is None:
-        end_time = datetime.utcnow()
+        end_time = get_utc_now()
 
     try:
         meeting_object_id = ObjectId(meeting_id)
@@ -2002,7 +2006,7 @@ def finalize_meeting_attendance(meeting_id, end_time=None):
     from bson.objectid import ObjectId
 
     if end_time is None:
-        end_time = datetime.utcnow()
+        end_time = get_utc_now()
 
     try:
         meeting_object_id = ObjectId(meeting_id)
@@ -2397,7 +2401,7 @@ def attendance_join(meeting_id):
             "join_time": join_t_str
         }), 200
 
-    join_time = datetime.utcnow()
+    join_time = get_utc_now()
     session_id = str(uuid.uuid4())
 
     attendance_record = {
@@ -2473,7 +2477,7 @@ def attendance_leave(meeting_id):
     finalized, duration_seconds = finalize_attendance_session(
         meeting_id,
         participant_id,
-        datetime.utcnow()
+        get_utc_now()
     )
 
     print(
@@ -2764,7 +2768,7 @@ def attention_api(meeting_id):
         }, 401
 
     from bson.objectid import ObjectId
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     participant_id = session.get("user_id")
 
@@ -3136,7 +3140,7 @@ def handle_leave_meeting(data):
 
     participant_id = session.get("user_id")
     if session.get("role") == "participant" and participant_id:
-        finalize_attendance_session(meeting_id, participant_id, datetime.utcnow())
+        finalize_attendance_session(meeting_id, participant_id, get_utc_now())
 
     emit(
         "participant_left",
@@ -3273,7 +3277,7 @@ def generate_meeting_ai_summary(meeting_id):
                 "$set": {
                     "ai_summary": ai_summary,
                     "transcript": transcript,
-                    "summary_generated_at": datetime.utcnow()
+                    "summary_generated_at": get_utc_now()
                 }
             }
         )
@@ -3531,7 +3535,7 @@ def realtime_meeting_audio():
             "participant_id": participant_id,
             "participant_name": session.get("user_name", "Participant"),
             "text": transcript,
-            "timestamp": datetime.utcnow()
+            "timestamp": get_utc_now()
         }
 
         meetings_collection.update_one(
@@ -3626,7 +3630,7 @@ def realtime_meeting_audio():
                 "categories": toxicity,
                 "action": action,
                 "message": message,
-                "timestamp": datetime.utcnow()
+                "timestamp": get_utc_now()
             }
 
             meetings_collection.update_one(
