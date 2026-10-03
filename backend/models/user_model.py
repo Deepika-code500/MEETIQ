@@ -1,7 +1,6 @@
 from database import db
 from werkzeug.security import generate_password_hash
 
-
 admins_collection = db["admins"]
 participants_collection = db["participants"]
 
@@ -24,14 +23,18 @@ def create_participant(
     department,
     year,
     user_id,
-    password
+    password,
+    team="General",
+    eligible=True
 ):
     participant = {
         "name": name,
         "email": email.lower().strip(),
-        "department": department,
-        "year": year,
+        "department": department or "General",
+        "year": year or "1",
         "user_id": user_id,
+        "team": team or "General",
+        "eligible": eligible if isinstance(eligible, bool) else True,
         "password": generate_password_hash(password)
     }
 

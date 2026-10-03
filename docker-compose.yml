@@ -1,0 +1,87 @@
+name: meetiq
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: meetiq_web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - SECRET_KEY=${SECRET_KEY:-change_this_to_a_secure_random_key_in_production}
+      - MONGODB_URI=mongodb://mongodb:27017/meetiq
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AI_ASYNC_ENABLED=${AI_ASYNC_ENABLED:-True}
+      - OLLAMA_API_URL=${OLLAMA_API_URL:-http://host.docker.internal:11434}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
+      - TURN_ENABLED=${TURN_ENABLED:-False}
+      - TURN_SERVER_URL=${TURN_SERVER_URL:-}
+      - TURN_USERNAME=${TURN_USERNAME:-}
+      - TURN_PASSWORD=${TURN_PASSWORD:-}
+      - PYTHONPATH=/app/backend:/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: meetiq_celery_worker
+    restart: unless-stopped
+    command: ["python", "-m", "celery", "-A", "backend.celery_app.celery", "worker", "--loglevel=info"]
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - SECRET_KEY=${SECRET_KEY:-change_this_to_a_secure_random_key_in_production}
+      - MONGODB_URI=mongodb://mongodb:27017/meetiq
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AI_ASYNC_ENABLED=True
+      - OLLAMA_API_URL=${OLLAMA_API_URL:-http://host.docker.internal:11434}
+      - PYTHONPATH=/app/backend:/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: meetiq_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  mongodb:
+    image: mongo:6-jammy
+    container_name: meetiq_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mongodb_data:
+    driver: local

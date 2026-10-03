@@ -584,158 +584,137 @@
     </div>
 
 
+    <!-- ================= TOOLBAR & FILTERS ================= -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+        <input type="text" id="searchInput" placeholder="Search participant name/email..." onkeyup="filterParticipants()" style="flex: 1; min-width: 200px; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(14,20,36,0.85); color: white; font-size: 12px;">
+
+        <select id="departmentFilter" onchange="filterParticipants()" style="padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: #11182a; color: #aeb7ca; font-size: 12px;">
+            <option value="all">All Departments</option>
+            {% for department in departments %}
+                <option value="{{ department|lower }}" {% if selected_department == department|lower %}selected{% endif %}>{{ department }}</option>
+            {% endfor %}
+        </select>
+
+        <select id="teamFilter" onchange="filterParticipants()" style="padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: #11182a; color: #aeb7ca; font-size: 12px;">
+            <option value="all">All Teams</option>
+            {% for team in teams %}
+                <option value="{{ team|lower }}" {% if selected_team == team|lower %}selected{% endif %}>{{ team }}</option>
+            {% endfor %}
+        </select>
+
+        <select id="eligibilityFilter" onchange="filterParticipants()" style="padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: #11182a; color: #aeb7ca; font-size: 12px;">
+            <option value="all">All Eligibility</option>
+            <option value="eligible" selected>Eligible Only</option>
+            <option value="ineligible">Ineligible Only</option>
+        </select>
+
+        <button type="button" onclick="selectAllVisible(true)" style="padding: 10px 14px; border-radius: 10px; background: rgba(112,87,255,0.2); border: 1px solid rgba(112,87,255,0.4); color: white; font-size: 11px; cursor: pointer;">Select All Visible</button>
+        <button type="button" onclick="selectAllVisible(false)" style="padding: 10px 14px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #aeb7ca; font-size: 11px; cursor: pointer;">Deselect All</button>
+    </div>
+
     <!-- ================= PARTICIPANTS ================= -->
-
-    <form
-        method="POST"
-    >
-
+    <form method="POST">
         <section class="participants-container">
-
-
             <div class="section-header">
-
-                <h2>
-                    Registered Participants
-                </h2>
-
-                <span
-                    class="selected-count"
-                    id="selectedCount"
-                >
-                    0 selected
-                </span>
-
+                <h2>Registered Participants</h2>
+                <span class="selected-count" id="selectedCount">0 selected</span>
             </div>
 
-
             {% if participants %}
-
-
                 {% for participant in participants %}
+                <div class="participant-row"
+                     data-name="{{ participant.name|lower }}"
+                     data-email="{{ participant.email|lower }}"
+                     data-department="{{ (participant.department or 'General')|lower }}"
+                     data-team="{{ (participant.team or 'General')|lower }}"
+                     data-eligible="{{ 'true' if participant.eligible != False else 'false' }}">
 
+                    <input type="checkbox" name="participant_ids" class="participant-cb" value="{{ participant.user_id }}" onchange="updateSelectedCount()" {% if participant.eligible == False %}disabled{% endif %}>
 
-                <div class="participant-row">
-
-
-                    <input
-                        type="checkbox"
-                        name="participant_ids"
-                        value="{{ participant.user_id }}"
-                        onchange="updateSelectedCount()"
-                    >
-
-
-                    <div class="avatar">
-
-                        {{ participant.name[0]|upper }}
-
-                    </div>
-
+                    <div class="avatar">{{ participant.name[0]|upper }}</div>
 
                     <div>
-
-                        <div class="participant-name">
-
-                            {{ participant.name }}
-
-                        </div>
-
-                        <div class="participant-id">
-
-                            {{ participant.user_id }}
-
-                        </div>
-
+                        <div class="participant-name">{{ participant.name }}</div>
+                        <div class="participant-id">{{ participant.user_id }}</div>
                     </div>
 
-
-                    <div class="participant-email">
-
-                        {{ participant.email }}
-
-                    </div>
-
+                    <div class="participant-email">{{ participant.email }}</div>
 
                     <div class="department">
-
-                        {{ participant.department }}
-
+                        {{ participant.department or 'General' }} ({{ participant.team or 'General' }})
                     </div>
 
-
+                    <div>
+                        {% if participant.eligible != False %}
+                            <span style="padding: 3px 8px; border-radius: 12px; font-size: 10px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3);">Eligible</span>
+                        {% else %}
+                            <span style="padding: 3px 8px; border-radius: 12px; font-size: 10px; background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">Ineligible</span>
+                        {% endif %}
+                    </div>
                 </div>
-
-
                 {% endfor %}
-
-
             {% else %}
-
-
                 <div class="empty-state">
-
-                    <h3>
-                        No registered participants
-                    </h3>
-
-                    <p>
-                        Register participants before inviting them.
-                    </p>
-
+                    <h3>No registered participants found matching criteria</h3>
+                    <p>Try adjusting your department or team filter settings.</p>
                 </div>
-
-
             {% endif %}
-
-
         </section>
 
-
         <div class="actions">
-
-            <a
-                href="{{ url_for('admin_meetings') }}"
-                class="button cancel-button"
-            >
-                Cancel
-            </a>
-
-
-            <button
-                type="submit"
-                class="button invite-button"
-            >
-                Invite Selected
-            </button>
-
+            <a href="{{ url_for('admin_meetings') }}" class="button cancel-button">Cancel</a>
+            <button type="submit" class="button invite-button">Invite Selected</button>
         </div>
-
-
     </form>
-
-
 </main>
 
-
 <script>
-
 function updateSelectedCount() {
-
-    const selected =
-        document.querySelectorAll(
-            'input[name="participant_ids"]:checked'
-        ).length;
-
-    document.getElementById(
-        "selectedCount"
-    ).textContent =
-        selected + " selected";
+    const selected = document.querySelectorAll('input[name="participant_ids"]:checked').length;
+    document.getElementById("selectedCount").textContent = selected + " selected";
 }
 
+function selectAllVisible(selectState) {
+    const visibleRows = document.querySelectorAll('.participant-row');
+    visibleRows.forEach(row => {
+        if (row.style.display !== 'none') {
+            const cb = row.querySelector('.participant-cb');
+            if (cb && !cb.disabled) {
+                cb.checked = selectState;
+            }
+        }
+    });
+    updateSelectedCount();
+}
+
+function filterParticipants() {
+    const search = document.getElementById("searchInput").value.toLowerCase().trim();
+    const dept = document.getElementById("departmentFilter").value;
+    const team = document.getElementById("teamFilter").value;
+    const elig = document.getElementById("eligibilityFilter").value;
+
+    const rows = document.querySelectorAll(".participant-row");
+
+    rows.forEach(row => {
+        const rName = row.dataset.name || "";
+        const rEmail = row.dataset.email || "";
+        const rDept = row.dataset.department || "";
+        const rTeam = row.dataset.team || "";
+        const rElig = row.dataset.eligible || "true";
+
+        const matchesSearch = !search || rName.includes(search) || rEmail.includes(search) || rDept.includes(search) || rTeam.includes(search);
+        const matchesDept = dept === "all" || rDept === dept;
+        const matchesTeam = team === "all" || rTeam === team;
+        const matchesElig = elig === "all" || (elig === "eligible" && rElig === "true") || (elig === "ineligible" && rElig === "false");
+
+        if (matchesSearch && matchesDept && matchesTeam && matchesElig) {
+            row.style.display = "grid";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
+document.addEventListener("DOMContentLoaded", filterParticipants);
 </script>
-
-
 </body>
-
 </html>

@@ -29,6 +29,8 @@ from models.notification_model import (
     create_notification,
     notifications_collection
 )
+from database import db
+ai_jobs_collection = db["ai_jobs"]
 import sys
 
 SUMMARIZER_PATH = Path(__file__).resolve().parent.parent / "ai-services" / "summarization"
@@ -84,6 +86,98 @@ app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
 app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER")
 
 mail = Mail(app)
+
+# =========================================================
+# CORS & HEALTH CHECK CONFIGURATION
+# =========================================================
+
+@app.after_request
+def add_cors_headers(response):
+    origins = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+    if origins != "*":
+        allowed = [o.strip() for o in origins.split(",") if o.strip()]
+        req_origin = request.headers.get("Origin")
+        if req_origin and req_origin in allowed:
+            response.headers["Access-Control-Allow-Origin"] = req_origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+
+@app.route("/health")
+def health_check():
+    """
+    Staging & production health check endpoint.
+    Returns HTTP 200 OK with safe service status metadata.
+    Does not leak secrets, database credentials, or internal stack traces.
+    """
+    db_status = "connected"
+    try:
+        from database import client
+        client.admin.command("ping")
+    except Exception:
+        db_status = "disconnected"
+
+    return jsonify({
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "service": "MeetIQ Virtual Meeting Platform",
+        "database": db_status,
+        "timestamp": get_utc_now().isoformat()
+    }), 200 if db_status == "connected" else 503
+
+
+@app.route("/ready")
+def readiness_check():
+    """
+    Staging & production readiness check endpoint.
+    Indicates whether the application and database are ready to serve client requests.
+    """
+    db_ready = False
+    try:
+        from database import client
+        client.admin.command("ping")
+        db_ready = True
+    except Exception:
+        db_ready = False
+
+    if db_ready:
+        return jsonify({
+            "status": "ready",
+            "service": "MeetIQ Virtual Meeting Platform",
+            "database": "connected",
+            "timestamp": get_utc_now().isoformat()
+        }), 200
+    else:
+        return jsonify({
+            "status": "not_ready",
+            "service": "MeetIQ Virtual Meeting Platform",
+            "database": "disconnected",
+            "timestamp": get_utc_now().isoformat()
+        }), 503
+
+
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB max upload size
+
+
+
+from bson.objectid import ObjectId
+from bson.errors import InvalidId
+
+def safe_object_id(id_val):
+    """
+    Safely converts a string or ObjectId to a valid ObjectId.
+    Returns None if id_val is invalid or None.
+    """
+    if not id_val:
+        return None
+    if isinstance(id_val, ObjectId):
+        return id_val
+    try:
+        return ObjectId(str(id_val))
+    except (InvalidId, TypeError, ValueError):
+        return None
+
 
 @socketio.on("connect")
 def handle_socket_connect():
@@ -1194,40 +1288,80 @@ def invite_participants(meeting_id):
         flash("Meeting not found or you are not authorized to invite participants.", "error")
         return redirect(url_for("admin_meetings"))
 
-    participants = list(
-        participants_collection.find().sort("name", 1)
-    )
+    dept_filter = request.args.get("department", "all").strip()
+    team_filter = request.args.get("team", "all").strip()
+    eligible_only = request.args.get("eligible_only", "false").lower() == "true"
+    search_query = request.args.get("search", "").strip().lower()
+
+    all_participants_raw = list(participants_collection.find().sort("name", 1))
+    departments = sorted(list(set(p.get("department", "General") or "General" for p in all_participants_raw)))
+    teams = sorted(list(set(p.get("team", "General") or "General" for p in all_participants_raw)))
+
+    query = {}
+    if dept_filter != "all" and dept_filter:
+        query["department"] = {"$regex": f"^{re.escape(dept_filter)}$", "$options": "i"}
+    if team_filter != "all" and team_filter:
+        query["team"] = {"$regex": f"^{re.escape(team_filter)}$", "$options": "i"}
+    if eligible_only:
+        query["eligible"] = {"$ne": False}
+    if search_query:
+        query["$or"] = [
+            {"name": {"$regex": re.escape(search_query), "$options": "i"}},
+            {"email": {"$regex": re.escape(search_query), "$options": "i"}},
+            {"user_id": {"$regex": re.escape(search_query), "$options": "i"}}
+        ]
+
+    filtered_participants = list(participants_collection.find(query).sort("name", 1))
+    for p in filtered_participants:
+        p.setdefault("department", "General")
+        p.setdefault("team", "General")
+        p.setdefault("eligible", True)
 
     if request.method == "GET":
         return render_template(
             "admin/invite_participants.html",
             meeting=meeting,
-            participants=participants
+            participants=filtered_participants,
+            departments=departments,
+            teams=teams,
+            selected_department=dept_filter,
+            selected_team=team_filter,
+            eligible_only=eligible_only,
+            search_query=search_query
         )
 
     selected_participants = request.form.getlist("participant_ids")
-
-    meetings_collection.update_one(
-        {
-            "_id": meeting["_id"],
-            "created_by_email": session.get("user_id")
-        },
-        {
-            "$set": {
-                "invited_participants": selected_participants
-            }
-        }
-    )
+    existing_invited = set(meeting.get("invited_participants", []))
+    newly_invited = []
 
     for participant_id in selected_participants:
-
         participant = participants_collection.find_one({
-            "user_id": participant_id
+            "$or": [{"user_id": participant_id}, {"email": participant_id}]
         })
 
         if not participant:
             continue
 
+        if participant.get("eligible") is False:
+            continue
+
+        p_id = participant.get("user_id")
+        if p_id not in existing_invited:
+            meetings_collection.update_one(
+                {
+                    "_id": meeting["_id"],
+                    "created_by_email": session.get("user_id")
+                },
+                {
+                    "$addToSet": {
+                        "invited_participants": p_id
+                    }
+                }
+            )
+            existing_invited.add(p_id)
+            newly_invited.append(participant)
+
+    for participant in newly_invited:
         participant_email = participant.get("email")
         participant_name = participant.get("name", "Participant")
 
@@ -1341,12 +1475,415 @@ def create_meeting():
     return redirect(url_for("admin_meetings"))
 
 # =========================================================
-# ADMIN PARTICIPANTS
+# ADMIN PARTICIPANTS & BULK IMPORT
 # =========================================================
+
+import csv
+import io
+import re
+
+
+def parse_participant_import_file(file_storage):
+    """
+    Parses an uploaded CSV or Excel (.xlsx) file containing participant rows.
+    Performs email normalization, column mapping, row-level validation, duplicate detection,
+    and returns a structured validation result object.
+    """
+    if not file_storage or not file_storage.filename:
+        raise ValueError("No file selected for import.")
+
+    filename = secure_filename(file_storage.filename)
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext not in [".csv", ".xlsx", ".xls"]:
+        raise ValueError("Unsupported file format. Please upload a .csv or .xlsx file.")
+
+    content = file_storage.read()
+    if not content:
+        raise ValueError("Uploaded file is empty.")
+
+    if len(content) > 10 * 1024 * 1024:
+        raise ValueError("Uploaded file exceeds the 10MB size limit.")
+
+    raw_rows = []
+
+    if ext == ".csv":
+        try:
+            decoded = content.decode("utf-8-sig", errors="replace")
+            reader = csv.DictReader(io.StringIO(decoded))
+            for row in reader:
+                raw_rows.append(row)
+        except Exception as e:
+            raise ValueError(f"Failed to parse CSV file: {str(e)}")
+    else:
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(filename=io.BytesIO(content), read_only=True)
+            sheet = wb.active
+            rows_iter = sheet.iter_rows(values_only=True)
+            header_row = next(rows_iter, None)
+            if not header_row:
+                raise ValueError("Excel file is empty or missing headers.")
+
+            headers = [str(h).strip() if h is not None else f"col_{i}" for i, h in enumerate(header_row)]
+            for r in rows_iter:
+                if any(cell is not None for cell in r):
+                    row_dict = {headers[i]: (str(r[i]).strip() if i < len(r) and r[i] is not None else "") for i in range(len(headers))}
+                    raw_rows.append(row_dict)
+        except Exception as e:
+            raise ValueError(f"Failed to parse Excel file: {str(e)}")
+
+    if not raw_rows:
+        raise ValueError("No data rows found in the uploaded file.")
+
+    valid_rows = []
+    invalid_rows = []
+    duplicate_rows = []
+
+    seen_emails_in_file = set()
+    email_regex = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+    for index, raw in enumerate(raw_rows, start=2):
+        col_map = {str(k).lower().strip().replace(" ", "_"): str(v).strip() for k, v in raw.items() if k is not None}
+
+        name = col_map.get("name") or col_map.get("full_name") or col_map.get("participant_name") or ""
+        email = col_map.get("email") or col_map.get("email_address") or ""
+        department = col_map.get("department") or col_map.get("dept") or "General"
+        team = col_map.get("team") or col_map.get("group") or "General"
+        year = col_map.get("year") or col_map.get("class_year") or "1"
+        user_id = col_map.get("user_id") or col_map.get("id") or col_map.get("student_id") or col_map.get("employee_id") or ""
+        eligible_val = col_map.get("eligible") or col_map.get("is_eligible") or col_map.get("eligibility") or "true"
+
+        row_errors = []
+
+        if not name:
+            row_errors.append("Missing required field 'name'")
+        if not email:
+            row_errors.append("Missing required field 'email'")
+        else:
+            email = email.lower().strip()
+            if not email_regex.match(email):
+                row_errors.append(f"Invalid email format: '{email}'")
+
+        if not user_id:
+            user_id = email.split("@")[0] if email else f"user_{index}"
+
+        eligible_str = str(eligible_val).strip().lower()
+        is_eligible = eligible_str not in ["false", "no", "0", "ineligible", "disabled"]
+
+        if row_errors:
+            invalid_rows.append({
+                "row": index,
+                "data": raw,
+                "errors": row_errors
+            })
+            continue
+
+        if email in seen_emails_in_file:
+            duplicate_rows.append({
+                "row": index,
+                "email": email,
+                "reason": "Duplicate email entry in uploaded file"
+            })
+            continue
+        seen_emails_in_file.add(email)
+
+        existing_user = participants_collection.find_one({"$or": [{"email": email}, {"user_id": user_id}]})
+        if existing_user:
+            duplicate_rows.append({
+                "row": index,
+                "email": email,
+                "user_id": user_id,
+                "reason": "Participant already registered in system"
+            })
+            continue
+
+        valid_rows.append({
+            "name": name,
+            "email": email,
+            "department": department,
+            "team": team,
+            "year": str(year),
+            "user_id": user_id,
+            "eligible": is_eligible
+        })
+
+    return {
+        "total_rows": len(raw_rows),
+        "valid_count": len(valid_rows),
+        "invalid_count": len(invalid_rows),
+        "duplicate_count": len(duplicate_rows),
+        "valid_rows": valid_rows,
+        "invalid_rows": invalid_rows,
+        "duplicate_rows": duplicate_rows
+    }
+
+
+@app.route("/admin/participants")
+def admin_participants():
+    """Renders the admin participant management dashboard with department and team filtering."""
+    if session.get("role") != "admin":
+        flash("Please sign in as an administrator.", "error")
+        return redirect(url_for("admin_login"))
+
+    dept_filter = request.args.get("department", "all").strip()
+    team_filter = request.args.get("team", "all").strip()
+    eligible_only = request.args.get("eligible_only", "false").lower() == "true"
+    search_query = request.args.get("search", "").strip().lower()
+
+    query = {}
+    if dept_filter != "all" and dept_filter:
+        query["department"] = {"$regex": f"^{re.escape(dept_filter)}$", "$options": "i"}
+    if team_filter != "all" and team_filter:
+        query["team"] = {"$regex": f"^{re.escape(team_filter)}$", "$options": "i"}
+    if eligible_only:
+        query["eligible"] = {"$ne": False}
+    if search_query:
+        query["$or"] = [
+            {"name": {"$regex": re.escape(search_query), "$options": "i"}},
+            {"email": {"$regex": re.escape(search_query), "$options": "i"}},
+            {"user_id": {"$regex": re.escape(search_query), "$options": "i"}}
+        ]
+
+    all_participants_raw = list(participants_collection.find().sort("name", 1))
+
+    departments = sorted(list(set(p.get("department", "General") or "General" for p in all_participants_raw)))
+    teams = sorted(list(set(p.get("team", "General") or "General" for p in all_participants_raw)))
+
+    filtered_participants = list(participants_collection.find(query).sort("name", 1))
+    for p in filtered_participants:
+        p.setdefault("department", "General")
+        p.setdefault("team", "General")
+        p.setdefault("eligible", True)
+
+    return render_template(
+        "admin/participants.html",
+        participants=filtered_participants,
+        departments=departments,
+        teams=teams,
+        selected_department=dept_filter,
+        selected_team=team_filter,
+        eligible_only=eligible_only,
+        search_query=search_query
+    )
+
+
+@app.route("/api/admin/participants/filter", methods=["GET"])
+def api_filter_participants():
+    """
+    Returns JSON list of participants filtered by department, team, eligibility, and search.
+    Enforces admin authorization.
+    """
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    dept_filter = request.args.get("department", "all").strip()
+    team_filter = request.args.get("team", "all").strip()
+    eligible_only = request.args.get("eligible_only", "false").lower() == "true"
+    search_query = request.args.get("search", "").strip().lower()
+
+    query = {}
+    if dept_filter != "all" and dept_filter:
+        query["department"] = {"$regex": f"^{re.escape(dept_filter)}$", "$options": "i"}
+    if team_filter != "all" and team_filter:
+        query["team"] = {"$regex": f"^{re.escape(team_filter)}$", "$options": "i"}
+    if eligible_only:
+        query["eligible"] = {"$ne": False}
+    if search_query:
+        query["$or"] = [
+            {"name": {"$regex": re.escape(search_query), "$options": "i"}},
+            {"email": {"$regex": re.escape(search_query), "$options": "i"}},
+            {"user_id": {"$regex": re.escape(search_query), "$options": "i"}}
+        ]
+
+    matched = list(participants_collection.find(query).sort("name", 1))
+    all_raw = list(participants_collection.find())
+
+    departments = sorted(list(set(p.get("department", "General") or "General" for p in all_raw)))
+    teams = sorted(list(set(p.get("team", "General") or "General" for p in all_raw)))
+
+    result_list = []
+    for p in matched:
+        result_list.append({
+            "user_id": p.get("user_id"),
+            "name": p.get("name"),
+            "email": p.get("email"),
+            "department": p.get("department", "General"),
+            "team": p.get("team", "General"),
+            "year": p.get("year", "1"),
+            "eligible": p.get("eligible", True)
+        })
+
+    return jsonify({
+        "success": True,
+        "participants": result_list,
+        "count": len(result_list),
+        "departments": departments,
+        "teams": teams
+    }), 200
+
+
+@app.route("/api/admin/participants/import/preview", methods=["POST"])
+def api_import_participants_preview():
+    """
+    Parses uploaded Excel/CSV file and returns validation results for admin preview.
+    Enforces admin authorization.
+    """
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    if "file" not in request.files:
+        return jsonify({"success": False, "message": "No file uploaded."}), 400
+
+    file_storage = request.files["file"]
+
+    try:
+        parse_result = parse_participant_import_file(file_storage)
+        return jsonify({
+            "success": True,
+            "preview": parse_result
+        }), 200
+    except ValueError as val_err:
+        return jsonify({"success": False, "message": str(val_err)}), 400
+    except Exception as err:
+        return jsonify({"success": False, "message": f"Failed to process import file: {str(err)}"}), 500
+
+
+@app.route("/api/admin/participants/import/confirm", methods=["POST"])
+def api_import_participants_confirm():
+    """
+    Commits valid preview rows into MongoDB participants collection.
+    Enforces admin authorization.
+    """
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    rows_to_import = data.get("participants", [])
+
+    if not isinstance(rows_to_import, list) or not rows_to_import:
+        return jsonify({"success": False, "message": "No valid participants provided for import."}), 400
+
+    imported_count = 0
+    skipped_count = 0
+
+    for row in rows_to_import:
+        name = str(row.get("name", "")).strip()
+        email = str(row.get("email", "")).strip().lower()
+        user_id = str(row.get("user_id", "")).strip() or email.split("@")[0]
+        department = str(row.get("department", "General")).strip()
+        team = str(row.get("team", "General")).strip()
+        year = str(row.get("year", "1")).strip()
+        eligible = bool(row.get("eligible", True))
+
+        if not name or not email:
+            skipped_count += 1
+            continue
+
+        existing = participants_collection.find_one({"$or": [{"email": email}, {"user_id": user_id}]})
+        if existing:
+            skipped_count += 1
+            continue
+
+        create_participant(
+            name=name,
+            email=email,
+            department=department,
+            year=year,
+            user_id=user_id,
+            password="MeetIQ@123Participant",
+            team=team,
+            eligible=eligible
+        )
+        imported_count += 1
+
+    return jsonify({
+        "success": True,
+        "imported_count": imported_count,
+        "skipped_count": skipped_count,
+        "message": f"Successfully imported {imported_count} participant(s)."
+    }), 200
+
+
+@app.route("/api/admin/meetings/<meeting_id>/participants/bulk-invite", methods=["POST"])
+def api_bulk_invite_meeting_participants(meeting_id):
+    """
+    Invites participants to a meeting by specific IDs or department/team/eligibility criteria.
+    Prevents invitations to ineligible participants and avoids duplicate invitations.
+    Enforces admin authorization.
+    """
+    if session.get("role") != "admin":
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    meeting = get_admin_meeting(meeting_id)
+    if not meeting:
+        return jsonify({"success": False, "message": "Meeting not found or unauthorized."}), 404
+
+    payload = request.get_json(silent=True) or request.form.to_dict() or {}
+    participant_ids = payload.get("participant_ids", [])
+    if isinstance(participant_ids, str):
+        participant_ids = [p.strip() for p in participant_ids.split(",") if p.strip()]
+
+    dept_filter = payload.get("department", "all")
+    team_filter = payload.get("team", "all")
+    eligible_only = str(payload.get("eligible_only", "true")).lower() == "true"
+
+    query = {}
+    if participant_ids:
+        query["$or"] = [{"user_id": {"$in": participant_ids}}, {"email": {"$in": participant_ids}}]
+    else:
+        if dept_filter != "all" and dept_filter:
+            query["department"] = {"$regex": f"^{re.escape(dept_filter)}$", "$options": "i"}
+        if team_filter != "all" and team_filter:
+            query["team"] = {"$regex": f"^{re.escape(team_filter)}$", "$options": "i"}
+
+    target_participants = list(participants_collection.find(query))
+
+    invited_added = 0
+    ineligible_skipped = 0
+
+    existing_invited = set(meeting.get("invited_participants", []))
+
+    for p in target_participants:
+        p_user_id = p.get("user_id")
+        p_email = p.get("email")
+        p_eligible = p.get("eligible", True)
+
+        if p_eligible is False and eligible_only:
+            ineligible_skipped += 1
+            continue
+
+        if p_user_id not in existing_invited and p_email not in existing_invited:
+            meetings_collection.update_one(
+                {"_id": meeting["_id"]},
+                {"$addToSet": {"invited_participants": p_user_id}}
+            )
+            existing_invited.add(p_user_id)
+            invited_added += 1
+
+            create_notification(
+                participant_id=p_user_id,
+                participant_email=p_email,
+                meeting_id=str(meeting["_id"]),
+                meeting_title=meeting.get("title", "Meeting"),
+                meeting_date=meeting.get("formatted_date", meeting.get("date", "")),
+                meeting_time=meeting.get("formatted_time", meeting.get("time", "")),
+                message=f"You have been invited to {meeting.get('title', 'a meeting')}."
+            )
+
+    return jsonify({
+        "success": True,
+        "invited_added": invited_added,
+        "ineligible_skipped": ineligible_skipped,
+        "total_invited": len(existing_invited),
+        "message": f"Invited {invited_added} participant(s). {ineligible_skipped} ineligible participant(s) skipped."
+    }), 200
+
 
 # =========================================================
 # ADMIN ATTENDANCE
 # =========================================================
+
 
 @app.route("/admin/attendance")
 def admin_attendance():
@@ -1837,56 +2374,6 @@ def api_admin_ai_insights():
         "insights": insights_data
     })
 
-
-@app.route("/admin/participants")
-def admin_participants():
-
-    if session.get("role") != "admin":
-
-        flash(
-            "Please sign in as an administrator.",
-            "error"
-        )
-
-        return redirect(
-            url_for("admin_login")
-        )
-
-    # -----------------------------------------------------
-    # GET ALL PARTICIPANTS FROM MONGODB
-    # -----------------------------------------------------
-
-    participants = list(
-        participants_collection.find().sort(
-            "name",
-            1
-        )
-    )
-
-    # -----------------------------------------------------
-    # GET UNIQUE DEPARTMENTS
-    # -----------------------------------------------------
-
-    departments = sorted(
-        set(
-            participant.get(
-                "department",
-                ""
-            )
-            for participant in participants
-            if participant.get("department")
-        )
-    )
-
-    # -----------------------------------------------------
-    # SEND DATA TO PARTICIPANTS PAGE
-    # -----------------------------------------------------
-
-    return render_template(
-        "admin/participants.html",
-        participants=participants,
-        departments=departments
-    )
 
 # =========================================================
 # ATTENDANCE HELPERS
@@ -3331,11 +3818,9 @@ def create_meeting_summary(meeting_id):
             "message": "Unauthorized"
         }), 401
 
-    from bson.objectid import ObjectId
-
     try:
         meeting = meetings_collection.find_one({
-            "_id": ObjectId(meeting_id)
+            "_id": safe_object_id(meeting_id)
         })
     except Exception:
         meeting = None
@@ -3363,12 +3848,153 @@ def create_meeting_summary(meeting_id):
             "message": "You are not authorized to summarize this meeting."
         }), 403
 
+    job_id = f"job_{uuid.uuid4().hex}"
+    job_doc = {
+        "job_id": job_id,
+        "meeting_id": str(meeting_id),
+        "type": "summary",
+        "status": "PENDING",
+        "created_by": session.get("user_id"),
+        "result": None,
+        "error": None,
+        "created_at": get_utc_now(),
+        "completed_at": None
+    }
+    ai_jobs_collection.insert_one(job_doc)
+
+    if os.getenv("AI_ASYNC_ENABLED", "True").lower() == "true":
+        try:
+            from celery_app import async_generate_summary_task
+            async_generate_summary_task.delay(job_id, str(meeting_id))
+            return jsonify({
+                "success": True,
+                "async": True,
+                "job_id": job_id,
+                "status": "PENDING",
+                "message": "AI summary generation enqueued successfully."
+            }), 202
+        except Exception as e:
+            print("Celery enqueue failed, falling back to synchronous execution:", e)
+
     result = generate_meeting_ai_summary(meeting_id)
 
     if not result.get("success"):
+        ai_jobs_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "FAILED", "error": result.get("message"), "completed_at": get_utc_now()}}
+        )
         return jsonify(result), 400
 
+    ai_jobs_collection.update_one(
+        {"job_id": job_id},
+        {"$set": {"status": "COMPLETED", "result": result.get("summary"), "completed_at": get_utc_now()}}
+    )
+
+    result["job_id"] = job_id
+    result["status"] = "COMPLETED"
     return jsonify(result)
+
+
+@app.route("/api/ai/jobs/<job_id>", methods=["GET"])
+def get_ai_job_status(job_id):
+    """
+    Return status and result for an asynchronous AI job.
+    Enforces authentication and meeting ownership authorization.
+    """
+    if session.get("role") not in ["admin", "participant"]:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    user_id = session.get("user_id")
+
+    job = ai_jobs_collection.find_one({"job_id": job_id})
+    if not job:
+        return jsonify({"success": False, "message": "Job not found."}), 404
+
+    meeting_id = job.get("meeting_id")
+    meeting = meetings_collection.find_one({"_id": safe_object_id(meeting_id)})
+    if not meeting:
+        return jsonify({"success": False, "message": "Associated meeting not found."}), 404
+
+    if session.get("role") == "admin":
+        authorized = (meeting.get("created_by_email") == user_id)
+    else:
+        authorized = (user_id in meeting.get("invited_participants", []))
+
+    if not authorized:
+        return jsonify({"success": False, "message": "Unauthorized access to job."}), 403
+
+    return jsonify({
+        "success": True,
+        "job_id": job_id,
+        "meeting_id": meeting_id,
+        "type": job.get("type"),
+        "status": job.get("status"),
+        "result": job.get("result"),
+        "error": job.get("error"),
+        "created_at": job.get("created_at"),
+        "completed_at": job.get("completed_at")
+    }), 200
+
+
+def get_ice_servers_config():
+    """
+    Constructs WebRTC ICE servers configuration list based on environment settings.
+    Always retains Google public STUN server and conditionally appends TURN credentials if TURN_ENABLED is True.
+    """
+    ice_servers = [
+        {"urls": ["stun:stun.l.google.com:19302"]}
+    ]
+
+    turn_enabled = os.getenv("TURN_ENABLED", "False").lower() in ["true", "1", "yes"]
+    turn_url = os.getenv("TURN_SERVER_URL", "").strip()
+    turn_username = os.getenv("TURN_USERNAME", "").strip()
+    turn_password = os.getenv("TURN_PASSWORD", "").strip()
+
+    if turn_enabled and turn_url:
+        urls_list = [u.strip() for u in turn_url.split(",") if u.strip()]
+        turn_entry = {
+            "urls": urls_list
+        }
+        if turn_username:
+            turn_entry["username"] = turn_username
+        if turn_password:
+            turn_entry["credential"] = turn_password
+        ice_servers.append(turn_entry)
+
+    return ice_servers
+
+
+@app.route("/api/webrtc/ice-servers", methods=["GET"])
+def get_ice_servers():
+    """
+    Returns WebRTC ICE servers configuration for authorized meeting participants/admins.
+    Enforces authentication and meeting authorization boundaries.
+    """
+    if session.get("role") not in ["admin", "participant"]:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    meeting_id = request.args.get("meeting_id")
+    if not meeting_id:
+        return jsonify({"success": False, "message": "Meeting ID is required."}), 400
+
+    meeting = meetings_collection.find_one({"_id": safe_object_id(meeting_id)})
+    if not meeting:
+        return jsonify({"success": False, "message": "Meeting not found."}), 404
+
+    user_id = session.get("user_id")
+    if session.get("role") == "admin":
+        authorized = (meeting.get("created_by_email") == user_id)
+    else:
+        authorized = (user_id in meeting.get("invited_participants", []))
+
+    if not authorized:
+        return jsonify({"success": False, "message": "Unauthorized access to ICE configuration."}), 403
+
+    return jsonify({
+        "success": True,
+        "ice_servers": get_ice_servers_config()
+    }), 200
+
 
 
 @app.route("/api/meeting-summary/<meeting_id>", methods=["GET"])
@@ -3433,6 +4059,131 @@ def get_meeting_summary(meeting_id):
     })
 
 
+def process_audio_chunk_inference(meeting_id, participant_id, chunk_path, participant_name="Participant"):
+    """
+    Performs Whisper speech recognition and Detoxify text toxicity analysis on an audio chunk.
+    Saves transcript segments and toxicity events to MongoDB, emits Socket.IO moderation if needed,
+    and cleans up the audio chunk file.
+    """
+    chunk_path = Path(chunk_path)
+
+    try:
+        transcript = ""
+        if "model" in globals() and model is not None:
+            result = model.transcribe(str(chunk_path))
+            transcript = result.get("text", "").strip()
+        else:
+            try:
+                import whisper
+                whisper_model = whisper.load_model("base")
+                result = whisper_model.transcribe(str(chunk_path))
+                transcript = result.get("text", "").strip()
+            except Exception as e:
+                print("MeetIQ: Whisper transcription error inside worker:", e)
+                transcript = ""
+
+        if not transcript:
+            if chunk_path.exists():
+                chunk_path.unlink()
+            return {
+                "success": True,
+                "transcript": "",
+                "toxicity_score": 0.0,
+                "action": "none",
+                "message": "No speech detected."
+            }
+
+        # Save transcript segment
+        transcript_segment = {
+            "participant_id": participant_id,
+            "participant_name": participant_name,
+            "text": transcript,
+            "timestamp": get_utc_now()
+        }
+
+        meetings_collection.update_one(
+            {"_id": safe_object_id(meeting_id)},
+            {"$push": {"transcript_segments": transcript_segment}}
+        )
+
+        toxicity_score = 0.0
+        toxicity = {}
+        action = "none"
+        message = "No toxicity detected."
+
+        if detect_text_toxicity is not None:
+            try:
+                toxicity = detect_text_toxicity(transcript)
+                toxicity_score = float(toxicity.get("toxicity", 0.0))
+            except Exception as e:
+                print("MeetIQ: Toxicity error inside worker:", e)
+
+            previous_toxic_events = meetings_collection.count_documents({
+                "_id": safe_object_id(meeting_id),
+                "toxicity_events": {
+                    "$elemMatch": {
+                        "participant_id": participant_id,
+                        "toxicity_score": {"$gte": 0.60}
+                    }
+                }
+            })
+
+            if moderation_decision is not None:
+                moderation = moderation_decision(toxicity_score, previous_toxic_events)
+                action = moderation["action"]
+                message = moderation["message"]
+
+            if toxicity_score >= 0.60:
+                toxicity_event = {
+                    "participant_id": participant_id,
+                    "transcript": transcript,
+                    "toxicity_score": round(toxicity_score, 4),
+                    "categories": toxicity,
+                    "action": action,
+                    "message": message,
+                    "timestamp": get_utc_now()
+                }
+
+                meetings_collection.update_one(
+                    {"_id": safe_object_id(meeting_id)},
+                    {"$push": {"toxicity_events": toxicity_event}}
+                )
+
+            if action in ["warning", "mute"]:
+                participant_socket = socket_users.get(participant_id)
+                if participant_socket:
+                    try:
+                        socketio.emit(
+                            "toxicity_moderation",
+                            {
+                                "action": action,
+                                "message": message,
+                                "toxicity_score": round(toxicity_score, 4)
+                            },
+                            to=participant_socket
+                        )
+                    except Exception as socket_err:
+                        print("MeetIQ: Socket emit error:", socket_err)
+
+        if chunk_path.exists():
+            chunk_path.unlink()
+
+        return {
+            "success": True,
+            "transcript": transcript,
+            "toxicity_score": round(toxicity_score, 4),
+            "action": action,
+            "message": message
+        }
+
+    finally:
+        if chunk_path.exists():
+            try:
+                chunk_path.unlink()
+            except Exception:
+                pass
+
+
 @app.route("/api/meeting-audio/realtime", methods=["POST"])
 def realtime_meeting_audio():
     if session.get("role") != "participant":
@@ -3451,11 +4202,9 @@ def realtime_meeting_audio():
             "message": "Meeting ID or audio is missing."
         }), 400
 
-    from bson.objectid import ObjectId
-
     try:
         meeting = meetings_collection.find_one({
-            "_id": ObjectId(meeting_id),
+            "_id": safe_object_id(meeting_id),
             "invited_participants": participant_id,
             "status": "live"
         })
@@ -3480,243 +4229,100 @@ def realtime_meeting_audio():
         exist_ok=True
     )
 
-    import uuid
+    allowed_extensions = {".webm", ".wav", ".m4a", ".mp3", ".ogg"}
+    filename = secure_filename(audio.filename or "audio.webm")
+    ext = os.path.splitext(filename)[1].lower() if filename else ".webm"
+    if ext and ext not in allowed_extensions:
+        return jsonify({
+            "success": False,
+            "message": "Unsupported audio file format."
+        }), 400
 
-    chunk_filename = (
-        f"realtime_{uuid.uuid4().hex}.webm"
-    )
+    chunk_filename = f"realtime_{uuid.uuid4().hex}{ext if ext else '.webm'}"
+    chunk_path = (recordings_path / chunk_filename).resolve()
 
-    chunk_path = recordings_path / chunk_filename
+    if not str(chunk_path).startswith(str(recordings_path.resolve())):
+        return jsonify({
+            "success": False,
+            "message": "Invalid file path traversal attempt."
+        }), 400
 
     try:
-
-        # -----------------------------------------
-        # 1. Save temporary audio chunk
-        # -----------------------------------------
-
         audio.save(str(chunk_path))
+    except Exception as error:
+        return jsonify({
+            "success": False,
+            "message": f"Failed to save audio recording: {str(error)}"
+        }), 500
 
-        print(
-            "\nMeetIQ: Processing real-time audio chunk..."
-        )
+    job_id = f"job_whisper_{uuid.uuid4().hex}"
+    job_doc = {
+        "job_id": job_id,
+        "meeting_id": str(meeting_id),
+        "participant_id": participant_id,
+        "type": "whisper",
+        "status": "PENDING",
+        "created_by": participant_id,
+        "result": None,
+        "error": None,
+        "created_at": get_utc_now(),
+        "completed_at": None
+    }
+    ai_jobs_collection.insert_one(job_doc)
 
-        # -----------------------------------------
-        # 2. Whisper speech-to-text
-        # -----------------------------------------
-
-        print("MeetIQ: Transcribing real-time audio...")
-
-        result = model.transcribe(
-            str(chunk_path)
-)
-
-        transcript = result["text"].strip()
-
-        print(
-            "Real-time Transcript:",
-            transcript
-        )
-
-        if not transcript:
-
-            if chunk_path.exists():
-                chunk_path.unlink()
-
+    if os.getenv("AI_ASYNC_ENABLED", "True").lower() == "true":
+        try:
+            from celery_app import async_transcribe_audio_task
+            async_transcribe_audio_task.delay(
+                job_id,
+                str(meeting_id),
+                participant_id,
+                str(chunk_path),
+                session.get("user_name", "Participant")
+            )
             return jsonify({
                 "success": True,
-                "transcript": "",
-                "toxicity_score": 0,
-                "action": "none",
-                "message": "No speech detected."
-            })
+                "async": True,
+                "job_id": job_id,
+                "status": "PENDING",
+                "message": "Audio processing enqueued successfully."
+            }), 202
+        except Exception as enqueue_error:
+            print("MeetIQ: Celery enqueue failed for audio, falling back to synchronous execution:", enqueue_error)
 
-        # Save every Whisper transcript segment for the final AI summary.
-        transcript_segment = {
-            "participant_id": participant_id,
-            "participant_name": session.get("user_name", "Participant"),
-            "text": transcript,
-            "timestamp": get_utc_now()
-        }
-
-        meetings_collection.update_one(
-            {"_id": ObjectId(meeting_id)},
-            {"$push": {"transcript_segments": transcript_segment}}
+    try:
+        result_data = process_audio_chunk_inference(
+            meeting_id,
+            participant_id,
+            chunk_path,
+            session.get("user_name", "Participant")
         )
 
-        print("MeetIQ: Transcript segment saved for AI summary.")
-
-        # -----------------------------------------
-        # 3. Detect toxicity
-        # -----------------------------------------
-
-        print(
-            "MeetIQ: Running real-time toxicity detection..."
+        ai_jobs_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "COMPLETED", "result": result_data, "completed_at": get_utc_now()}}
         )
-
-        toxicity = detect_text_toxicity(
-            transcript
-        )
-
-        toxicity_score = float(
-            toxicity.get("toxicity", 0)
-        )
-
-        print(
-            "Real-time Toxicity Score:",
-            toxicity_score
-        )
-
-        print(
-            "Real-time Toxicity Categories:",
-            toxicity
-        )
-
-        # -----------------------------------------
-        # 4. Count previous toxic events
-        # -----------------------------------------
-
-        previous_toxic_events = meetings_collection.count_documents({
-            "_id": ObjectId(meeting_id),
-            "toxicity_events": {
-                "$elemMatch": {
-                    "participant_id": participant_id,
-                    "toxicity_score": {
-                        "$gte": 0.60
-                    }
-                }
-            }
-        })
-
-        # -----------------------------------------
-        # 5. Moderation decision
-        # -----------------------------------------
-
-        moderation = moderation_decision(
-            toxicity_score,
-            previous_toxic_events
-        )
-
-        action = moderation["action"]
-        message = moderation["message"]
-
-        print(
-            "Previous toxic events:",
-            previous_toxic_events
-        )
-
-        print(
-            "Moderation Action:",
-            action
-        )
-
-        print(
-            "Moderation Message:",
-            message
-        )
-
-        # -----------------------------------------
-        # 6. Save toxicity event
-        # -----------------------------------------
-
-        if toxicity_score >= 0.60:
-
-            toxicity_event = {
-                "participant_id": participant_id,
-                "transcript": transcript,
-                "toxicity_score": round(
-                    toxicity_score,
-                    4
-                ),
-                "categories": toxicity,
-                "action": action,
-                "message": message,
-                "timestamp": get_utc_now()
-            }
-
-            meetings_collection.update_one(
-                {
-                    "_id": ObjectId(meeting_id)
-                },
-                {
-                    "$push": {
-                        "toxicity_events":
-                        toxicity_event
-                    }
-                }
-            )
-
-            print(
-                "MeetIQ: Real-time toxicity event saved."
-            )
-
-        # -----------------------------------------
-        # 7. Send warning / mute command
-        #    to participant browser
-        # -----------------------------------------
-
-        if action in ["warning", "mute"]:
-
-            participant_socket = socket_users.get(
-                participant_id
-            )
-
-            if participant_socket:
-
-                socketio.emit(
-                    "toxicity_moderation",
-                    {
-                        "action": action,
-                        "message": message,
-                        "toxicity_score": round(
-                            toxicity_score,
-                            4
-                        )
-                    },
-                    to=participant_socket
-                )
-
-                print(
-                    "MeetIQ: Moderation event sent to participant."
-                )
-
-            else:
-
-                print(
-                    "MeetIQ: Participant socket not found."
-                )
-
-        # -----------------------------------------
-        # 8. Delete temporary audio
-        # -----------------------------------------
-
-        if chunk_path.exists():
-            chunk_path.unlink()
-
-        return jsonify({
-            "success": True,
-            "transcript": transcript,
-            "toxicity_score": round(
-                toxicity_score,
-                4
-            ),
-            "action": action,
-            "message": message
-        })
+        result_data["job_id"] = job_id
+        result_data["status"] = "COMPLETED"
+        return jsonify(result_data)
 
     except Exception as error:
-
-        print(
-            "Real-time audio processing error:",
-            error
+        print("Real-time audio processing error:", error)
+        ai_jobs_collection.update_one(
+            {"job_id": job_id},
+            {"$set": {"status": "FAILED", "error": str(error), "completed_at": get_utc_now()}}
         )
-
         if chunk_path.exists():
-            chunk_path.unlink()
+            try:
+                chunk_path.unlink()
+            except Exception:
+                pass
 
         return jsonify({
             "success": False,
             "message": str(error)
         }), 500
+
 # =========================================================
 # RUN APPLICATION
 # =========================================================

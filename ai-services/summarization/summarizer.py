@@ -7,8 +7,15 @@ import json
 import requests
 
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-MODEL_NAME = "llama3.2:3b"
+import os
+
+ollama_base = os.getenv("OLLAMA_API_URL", "http://127.0.0.1:11434").rstrip("/")
+if not ollama_base.endswith("/api/generate"):
+    OLLAMA_URL = f"{ollama_base}/api/generate"
+else:
+    OLLAMA_URL = ollama_base
+
+MODEL_NAME = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
 
 
 def generate_summary(transcript):

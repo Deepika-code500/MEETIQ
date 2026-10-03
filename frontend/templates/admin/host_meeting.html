@@ -489,18 +489,28 @@ socket.on("participant_joined", async function(data) {
         return;
     }
 
-    console.log(
-        "Creating WebRTC connection for:",
-        participantId
-    );
+    const meetingId = "{{ meeting._id }}";
+    let iceServersConfig = [{ urls: "stun:stun.l.google.com:19302" }];
+
+    async function fetchIceServers() {
+        try {
+            const response = await fetch("/api/webrtc/ice-servers?meeting_id=" + meetingId);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && Array.isArray(data.ice_servers) && data.ice_servers.length > 0) {
+                    iceServersConfig = data.ice_servers;
+                    console.log("MeetIQ: Loaded ICE servers configuration:", iceServersConfig);
+                }
+            }
+        } catch (err) {
+            console.warn("MeetIQ: Failed to fetch ICE servers, using STUN fallback:", err);
+        }
+    }
+    fetchIceServers();
 
     const peerConnection =
         new RTCPeerConnection({
-            iceServers: [
-                {
-                    urls: "stun:stun.l.google.com:19302"
-                }
-            ]
+            iceServers: iceServersConfig
         });
 
 

@@ -22,3 +22,6 @@ ai-services/speech-to-text/recordings/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Scratch scripts
+scratch/

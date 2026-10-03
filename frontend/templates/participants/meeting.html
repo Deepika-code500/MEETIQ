@@ -888,126 +888,136 @@ socket.on("webrtc_offer", async function(data) {
         "WebRTC offer received from host."
     );
 
-    try {
+        const meetingId = "{{ meeting._id }}";
+        let iceServersConfig = [{ urls: "stun:stun.l.google.com:19302" }];
 
-        peerConnection =
-            new RTCPeerConnection({
-                iceServers: [
-                    {
-                        urls:
-                            "stun:stun.l.google.com:19302"
-                    }
-                ]
-            });
+        try {
+            const response = await fetch("/api/webrtc/ice-servers?meeting_id=" + meetingId);
+            if (response.ok) {
+                const iceData = await response.json();
+                if (iceData.success && Array.isArray(iceData.ice_servers) && iceData.ice_servers.length > 0) {
+                    iceServersConfig = iceData.ice_servers;
+                    console.log("MeetIQ: Participant loaded ICE servers:", iceServersConfig);
+                }
+            }
+        } catch (iceErr) {
+            console.warn("MeetIQ: Could not fetch ICE servers, using STUN fallback:", iceErr);
+        }
 
-
-        // Add participant camera and microphone
-        if (localStream) {
-
-            localStream
-                .getTracks()
-                .forEach(function(track) {
-
-                    peerConnection.addTrack(
-                        track,
-                        localStream
-                    );
-
+        try {
+            peerConnection =
+                new RTCPeerConnection({
+                    iceServers: iceServersConfig
                 });
 
-        }
 
+            // Add participant camera and microphone
+            if (localStream) {
 
-        // Receive host media
-        peerConnection.ontrack =
-    function(event) {
+                localStream
+                    .getTracks()
+                    .forEach(function(track) {
 
-        console.log(
-            "Host media received."
-        );
+                        peerConnection.addTrack(
+                            track,
+                            localStream
+                        );
 
-        const remoteVideo =
-            document.getElementById(
-                "remoteVideo"
-            );
+                    });
 
-        if (remoteVideo) {
-
-            remoteVideo.srcObject =
-                event.streams[0];
-
-            remoteVideo.play().catch(
-                function(error) {
-                    console.log(
-                        "Remote video play was blocked:",
-                        error
-                    );
-                }
-            );
-
-        }
-
-    };
-
-
-        // Send ICE candidates back to host
-        peerConnection.onicecandidate =
-            function(event) {
-
-                if (event.candidate) {
-
-                    socket.emit(
-                        "webrtc_ice_candidate",
-                        {
-                            meeting_id: meetingId,
-                            target_id: data.sender_id,
-                            candidate:
-                                event.candidate
-                        }
-                    );
-
-                }
-
-            };
-
-
-        await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(
-                data.offer
-            )
-        );
-
-
-        const answer =
-            await peerConnection.createAnswer();
-
-        await peerConnection.setLocalDescription(
-            answer
-        );
-
-
-        socket.emit(
-            "webrtc_answer",
-            {
-                meeting_id: meetingId,
-                target_id: data.sender_id,
-                answer: answer
             }
-        );
 
 
-        console.log(
-            "WebRTC answer sent to host."
-        );
+            // Receive host media
+            peerConnection.ontrack =
+                function(event) {
 
-    } catch (error) {
+                    console.log(
+                        "Host media received."
+                    );
 
-        console.error(
-            "WebRTC offer handling failed:",
-            error
-        );
+                    const remoteVideo =
+                        document.getElementById(
+                            "remoteVideo"
+                        );
 
-    }
+                    if (remoteVideo) {
+
+                        remoteVideo.srcObject =
+                            event.streams[0];
+
+                        remoteVideo.play().catch(
+                            function(error) {
+                                console.log(
+                                    "Remote video play was blocked:",
+                                    error
+                                );
+                            }
+                        );
+
+                    }
+
+                };
+
+
+            // Send ICE candidates back to host
+            peerConnection.onicecandidate =
+                function(event) {
+
+                    if (event.candidate) {
+
+                        socket.emit(
+                            "webrtc_ice_candidate",
+                            {
+                                meeting_id: meetingId,
+                                target_id: data.sender_id,
+                                candidate:
+                                    event.candidate
+                            }
+                        );
+
+                    }
+
+                };
+
+
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(
+                    data.offer
+                )
+            );
+
+
+            const answer =
+                await peerConnection.createAnswer();
+
+            await peerConnection.setLocalDescription(
+                answer
+            );
+
+
+            socket.emit(
+                "webrtc_answer",
+                {
+                    meeting_id: meetingId,
+                    target_id: data.sender_id,
+                    answer: answer
+                }
+            );
+
+
+            console.log(
+                "WebRTC answer sent to host."
+            );
+
+        } catch (error) {
+
+            console.error(
+                "WebRTC offer handling failed:",
+                error
+            );
+
+        }
 
 });
 socket.on("webrtc_ice_candidate", async function(data) {
