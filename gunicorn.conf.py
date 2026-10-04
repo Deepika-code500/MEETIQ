@@ -3,7 +3,10 @@
 # =========================================================
 
 
-bind = "0.0.0.0:5000"
+import os
+
+port = os.getenv("PORT", "5000")
+bind = f"0.0.0.0:{port}" if ":" not in port else port
 workers = 1
 worker_class = "eventlet"
 keepalive = 5

@@ -5,14 +5,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/meetiq")
+timeout_ms = int(os.getenv("MONGODB_TIMEOUT_MS", "5000"))
 
-client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=2000)
-db = client["meetiq"]
+client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=timeout_ms)
+db = client.get_default_database(default="meetiq")
 
 try:
     client.admin.command("ping")
     print("MongoDB connected successfully!")
-    print("Database selected: meetiq")
+    print(f"Database selected: {db.name}")
 except Exception as error:
     print("MongoDB connection failed:")
     print(error)

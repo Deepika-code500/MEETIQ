@@ -39,7 +39,7 @@ EXPOSE 5000
 
 # Container Health Check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:5000/health || exit 1
+  CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
 
 # Production WSGI Server Startup Command
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "backend.app:app"]

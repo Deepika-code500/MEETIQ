@@ -1,0 +1,53 @@
+# =========================================================
+# MEETIQ — Render Blueprint Deployment Configuration
+# =========================================================
+# This blueprint configures the public Web Service for MEETIQ on Render.
+#
+# SERVICE ARCHITECTURE SUMMARY:
+# - Web Service: Runs Flask/Gunicorn + Socket.IO inside Docker container.
+# - MongoDB: External managed cluster (e.g., MongoDB Atlas M0 Free Tier).
+# - Redis/Celery: External managed Redis (e.g., Upstash) for background tasks.
+# - AI Services: External worker host for Whisper/Ollama (heavy CPU/GPU dependencies).
+# =========================================================
+
+services:
+  - type: web
+    name: meetiq-web
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: SESSION_COOKIE_HTTPONLY
+        value: "True"
+      - key: SESSION_COOKIE_SAMESITE
+        value: "Lax"
+      - key: SESSION_COOKIE_SECURE
+        value: "True"
+      - key: AI_ASYNC_ENABLED
+        value: "False"
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false
+      - key: OLLAMA_API_URL
+        sync: false
+      - key: SUMMARIZER_MODEL
+        value: "llama3"
+      - key: TURN_ENABLED
+        value: "False"
+      - key: TURN_SERVER_URL
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_PASSWORD
+        sync: false
